@@ -62,15 +62,17 @@ interface IconProps extends Omit<SVGProps<SVGSVGElement>, "name"> {
   size?: number;
   strokeWidth?: number;
   title?: string;
+  /** Fill the shape with currentColor (the saved bookmark). */
+  filled?: boolean;
 }
 
-export function Icon({ name, size = 20, strokeWidth = 2, title, ...rest }: IconProps) {
+export function Icon({ name, size = 20, strokeWidth = 2, title, filled = false, ...rest }: IconProps) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth={strokeWidth}
       strokeLinecap="round"

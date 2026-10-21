@@ -86,7 +86,8 @@
   color: var(--color-danger-ink);
 }
 
-.secondary[aria-pressed='true'] {
+/* Pressed toggles in rows (Helpful · 24). The Save action keeps its surface and fills its icon instead. */
+.secondary.size36[aria-pressed='true'] {
   background: var(--color-accent-soft);
   color: var(--color-accent-ink);
 }

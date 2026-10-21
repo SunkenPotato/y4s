@@ -23,7 +23,16 @@ export interface School extends SchoolSummary {
 }
 
 export type Role = "user" | "admin";
-export type UserStatus = "pending_email" | "pending_school" | "verified" | "rejected" | "suspended";
+export type UserStatus = "pending_email" | "pending_school" | "verified" | "rejected" | "suspended" | "expired";
+
+/** A school change in progress (see "Changing school" in docs/api.md). */
+export interface PendingSchoolChange {
+  email: string;
+  needs_school: boolean;
+  school: SchoolSummary | null;
+  /** YYYY-MM */
+  enrolled_on: string;
+}
 
 export interface Me {
   id: Uuid;
@@ -35,6 +44,11 @@ export interface Me {
   status: UserStatus;
   school: SchoolSummary | null;
   needs_school: boolean;
+  /** YYYY-MM, the month the student started at this school. */
+  enrolled_on: string;
+  /** YYYY-MM-DD, first day of enrolled_on + 5 years; posting stops on this date. */
+  access_until: string;
+  pending_school_change: PendingSchoolChange | null;
   created_at: Timestamp;
 }
 
@@ -97,6 +111,8 @@ export interface PlaceDetail extends Place {
   rating_distribution: RatingDistribution;
   school: SchoolSummary | null;
   viewer_review_id: Uuid | null;
+  /** False when signed out. */
+  viewer_saved: boolean;
 }
 
 export type Rating = 1 | 2 | 3 | 4 | 5;
@@ -111,9 +127,14 @@ export interface Review {
   helpful_count: number;
   viewer_voted: boolean;
   is_mine: boolean;
+  /** School is a snapshot from when the review was posted. */
   author: Author;
   created_at: Timestamp;
   updated_at: Timestamp;
+  /** Set when the author changed rating or body. */
+  edited_at: Timestamp | null;
+  /** created_at + 15 min, only when is_mine; null otherwise. */
+  editable_until: Timestamp | null;
 }
 
 export interface Page<T> {
@@ -150,6 +171,8 @@ export interface SignupInput {
   first_name: string;
   last_name: string;
   birth_year: number;
+  /** YYYY-MM */
+  enrolled_on: string;
 }
 
 export interface NewSchoolInput {
@@ -180,6 +203,12 @@ export interface ReviewInput {
   body: string;
   visited_month: string | null;
   used_deal: boolean;
+}
+
+export interface SchoolChangeInput {
+  email: string;
+  /** YYYY-MM */
+  enrolled_on: string;
 }
 
 export interface VoteResult {

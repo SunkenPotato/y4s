@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "@/components/Button/Button";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
-import { Container, LoadingNote, Placeholder, Stack } from "@/components/Layout/Layout";
+import { Container, LoadingNote, PageHead, Placeholder, Stack } from "@/components/Layout/Layout";
+import { ExpiredAlert } from "@/flows/access/ExpiredAlert";
 import { getMe } from "@/lib/api/server";
 import { loginHref } from "@/lib/auth";
 import { NewPlaceForm } from "./NewPlaceForm";
@@ -34,6 +35,14 @@ async function NewPlace({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const me = await getMe();
   if (!me) redirect(loginHref("/places/new"));
+  if (me.status === "expired") {
+    return (
+      <Stack gap={5} style={{ paddingTop: "var(--space-6)" }}>
+        <PageHead title="Add a place" size="title" />
+        <ExpiredAlert accessUntil={me.access_until} />
+      </Stack>
+    );
+  }
   if (me.status !== "verified") {
     return (
       <EmptyState

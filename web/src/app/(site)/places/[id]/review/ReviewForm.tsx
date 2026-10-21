@@ -12,9 +12,11 @@ import { StarInput } from "@/components/StarRating/StarRating";
 import { Textarea, formatCounter } from "@/components/Textarea/Textarea";
 import { Tile } from "@/components/Tile/Tile";
 import { useToast } from "@/components/Toast/Toast";
+import { ExpiredAlert } from "@/flows/access/ExpiredAlert";
 import { api, isApiError } from "@/lib/api/client";
-import type { Rating } from "@/lib/api/types";
+import type { Rating, Review } from "@/lib/api/types";
 import { monthLabel, recentMonths } from "@/lib/format";
+import { useNow } from "@/lib/hooks/useNow";
 import styles from "./review.module.css";
 
 const MIN = 50;
@@ -30,7 +32,13 @@ interface Draft {
 interface ReviewFormProps {
   place: { id: string; name: string; hasDeal: boolean };
   author: { displayName: string; schoolName: string };
+  /** Edit mode: pre-fills the form and saves with PATCH. Drafts aren't stored while editing. */
+  existing?: Review;
+  /** Server render time, so a closed edit window shows before hydration. */
+  renderedAt?: number;
 }
+
+type FormError = { title: string; text?: string; backLink?: boolean; expiredUntil?: string };
 
 const draftKey = (placeId: string) => `corner:review-draft:${placeId}`;
 
@@ -49,16 +57,23 @@ function bodyError(body: string): string | null {
   return `Write at least 50 characters so it's useful. ${MIN - n} more to go.`;
 }
 
-export function ReviewForm({ place, author }: ReviewFormProps) {
+export function ReviewForm({ place, author, existing, renderedAt }: ReviewFormProps) {
   const router = useRouter();
   const toast = useToast();
-  const [months] = useState(() => recentMonths(new Date(), 12));
-  const [rating, setRating] = useState<number | null>(null);
-  const [body, setBody] = useState("");
-  const [visited, setVisited] = useState<string>(months[0]);
-  const [usedDeal, setUsedDeal] = useState(false);
+  const editing = !!existing;
+  const now = useNow(1000, renderedAt ?? null);
+  const [months] = useState(() => {
+    const list = recentMonths(new Date(), 12);
+    // Keep an older visited month selectable when editing.
+    if (existing?.visited_month && !list.includes(existing.visited_month)) list.push(existing.visited_month);
+    return list;
+  });
+  const [rating, setRating] = useState<number | null>(existing?.rating ?? null);
+  const [body, setBody] = useState(existing?.body ?? "");
+  const [visited, setVisited] = useState<string>(existing ? (existing.visited_month ?? "") : months[0]);
+  const [usedDeal, setUsedDeal] = useState(existing?.used_deal ?? false);
   const [errors, setErrors] = useState<{ rating?: string; body?: string; visited_month?: string }>({});
-  const [formError, setFormError] = useState<{ title: string; text?: string } | null>(null);
+  const [formError, setFormError] = useState<FormError | null>(null);
   const [state, setState] = useState<"idle" | "posting" | "posted">("idle");
   const [showErrors, setShowErrors] = useState(false);
   const loaded = useRef(false);
@@ -67,6 +82,7 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
 
   // Restore a saved draft once, after hydration (localStorage isn't available on the server).
   useEffect(() => {
+    if (editing) return;
     const d = readDraft(place.id);
     if (d) {
       /* eslint-disable react-hooks/set-state-in-effect -- one-time restore from localStorage */
@@ -77,11 +93,11 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
       /* eslint-enable react-hooks/set-state-in-effect */
     }
     loaded.current = true;
-  }, [place.id]);
+  }, [place.id, editing]);
 
   // Save the draft as the student types.
   useEffect(() => {
-    if (!loaded.current || state === "posted") return;
+    if (editing || !loaded.current || state === "posted") return;
     const t = window.setTimeout(() => {
       try {
         const draft: Draft = { rating, body, visited, usedDeal };
@@ -92,7 +108,10 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
       }
     }, 400);
     return () => window.clearTimeout(t);
-  }, [rating, body, visited, usedDeal, place.id, state]);
+  }, [rating, body, visited, usedDeal, place.id, state, editing]);
+
+  // The 15-minute edit window, checked against the viewer's clock.
+  const windowClosed = editing && !!now && state !== "posted" && (!existing.editable_until || new Date(existing.editable_until).getTime() <= now);
 
   const ratingMsg = errors.rating ?? (showErrors && !rating ? "Pick a rating from 1 to 5 stars." : null);
   const bodyMsg = showErrors && body.trim().length < MIN ? bodyError(body) : (errors.body ?? null);
@@ -121,6 +140,7 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
     }
 
     setState("posting");
+    if (existing) return saveEdit(existing);
     try {
       const review = await api.createReview(place.id, {
         rating: rating as Rating,
@@ -160,6 +180,8 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
         if (!err.fields.rating && !err.fields.body) setFormError({ title: "Check your review", text: err.message });
       } else if (err.code === "already_reviewed") {
         setFormError({ title: "You've already reviewed this place", text: err.message });
+      } else if (err.code === "access_expired") {
+        await showExpired(err.message);
       } else if (err.code === "not_verified") {
         setFormError({ title: "Verify your school email to post", text: err.message });
       } else if (err.status === 401) {
@@ -170,17 +192,66 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
     }
   }
 
+  // access_expired: show the standard message, which needs the viewer's access_until.
+  async function showExpired(fallback: string) {
+    const me = await api.me().catch(() => null);
+    setFormError({ title: fallback, expiredUntil: me?.access_until });
+  }
+
+  async function saveEdit(review: Review) {
+    try {
+      const updated = await api.updateReview(review.id, {
+        rating: rating as Rating,
+        body: body.trim(),
+        visited_month: visited || null,
+        used_deal: place.hasDeal ? usedDeal : false,
+      });
+      setState("posted");
+      toast.show({ message: "Review updated" });
+      router.push(`/places/${place.id}#review-${updated.id}`);
+      router.refresh();
+    } catch (err) {
+      setState("idle");
+      if (!isApiError(err)) {
+        setFormError({ title: "Couldn't save your changes", text: "Check your connection and try again." });
+      } else if (err.code === "validation") {
+        setErrors(err.fields);
+        if (!err.fields.rating && !err.fields.body) setFormError({ title: "Check your review", text: err.message });
+      } else if (err.code === "edit_window_closed") {
+        setFormError({ title: "Editing time is over", text: err.message, backLink: true });
+      } else if (err.code === "access_expired") {
+        await showExpired(err.message);
+      } else {
+        setFormError({ title: "Couldn't save your changes", text: err.message });
+      }
+    }
+  }
+
+  const closedError: FormError | null = windowClosed
+    ? { title: "Editing time is over", text: "Reviews can be edited for 15 minutes after posting.", backLink: true }
+    : null;
+  const shownError = formError ?? closedError;
+  const idleLabel = editing ? "Save changes" : "Post review";
+  const busyLabel = editing ? "Saving…" : "Posting…";
+  const doneLabel = editing ? "Changes saved" : "Review posted";
+
   return (
     <Columns gap={7} className={styles.layout}>
       <MainColumn>
         <form onSubmit={submit} noValidate className={styles.form}>
-          <PageHead title={`Review ${place.name}`} size="title">
+          <PageHead title={editing ? `Edit your review of ${place.name}` : `Review ${place.name}`} size="title">
             Posting as {author.displayName} · Verified at {author.schoolName}
           </PageHead>
 
-          {formError ? (
-            <Alert tone="error" title={formError.title}>
-              {formError.text}
+          {shownError?.expiredUntil ? (
+            <ExpiredAlert accessUntil={shownError.expiredUntil} />
+          ) : shownError ? (
+            <Alert
+              tone="error"
+              title={shownError.title}
+              action={shownError.backLink ? <TextLink href={`/places/${place.id}`}>Back to {place.name}</TextLink> : undefined}
+            >
+              {shownError.text}
             </Alert>
           ) : null}
 
@@ -234,15 +305,17 @@ export function ReviewForm({ place, author }: ReviewFormProps) {
             <Button
               type="submit"
               loading={state === "posting"}
-              loadingLabel="Posting…"
-              disabled={state === "posted"}
+              loadingLabel={busyLabel}
+              disabled={state === "posted" || windowClosed}
             >
-              {state === "posted" ? "Review posted" : "Post review"}
+              {state === "posted" ? doneLabel : idleLabel}
             </Button>
             <TextLink href={`/places/${place.id}`}>Cancel</TextLink>
-            <Muted small as="span">
-              Your draft is saved automatically.
-            </Muted>
+            {!editing ? (
+              <Muted small as="span">
+                Your draft is saved automatically.
+              </Muted>
+            ) : null}
           </Row>
         </form>
       </MainColumn>

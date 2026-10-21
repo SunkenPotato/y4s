@@ -17,3 +17,18 @@
 .pair > * {
   flex: 1 1 200px;
 }
+
+.schoolName {
+  font: var(--text-headline);
+  letter-spacing: var(--tracking-headline);
+}
+
+.saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.more {
+  margin-top: var(--space-4);
+}

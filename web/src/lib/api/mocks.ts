@@ -7,6 +7,8 @@
  * developing UI.
  */
 import type { Method, QueryValue } from "./core";
+import { ENROLLMENT_TOO_OLD, enrollmentError } from "@/lib/enrollment";
+import { monthYear } from "@/lib/format";
 import { ApiError } from "./errors";
 import type {
   AdminDomain,
@@ -25,6 +27,7 @@ import type {
 } from "./types";
 
 export const MOCK_COOKIE = "corner_mock_me";
+const SAVED_COOKIE = "corner_mock_saved";
 
 /* Schools */
 
@@ -47,7 +50,9 @@ const SCHOOLS: School[] = [
   { id: "8d6c1f8e-0000-4000-8000-000000000006", name: "Westwood Charter", kind: "high_school", city: "Los Angeles", state: "CA", lat: 34.0556, lng: -118.4406 },
   { id: "8d6c1f8e-0000-4000-8000-000000000007", name: "Harvard-Westlake School", kind: "high_school", city: "Los Angeles", state: "CA", lat: 34.1394, lng: -118.4122 },
   { id: "8d6c1f8e-0000-4000-8000-000000000008", name: "Palisades Charter High", kind: "high_school", city: "Pacific Palisades", state: "CA", lat: 34.0469, lng: -118.5262 },
+  { id: "8d6c1f8e-0000-4000-8000-000000000009", name: "New York University", kind: "university", city: "New York", state: "NY", lat: 40.7295, lng: -73.9965 },
 ];
+const NYU = SCHOOLS[8];
 
 const summary = (s: School): SchoolSummary => ({ id: s.id, name: s.name, kind: s.kind, city: s.city, state: s.state });
 const schoolByName = (name: string) => SCHOOLS.find((s) => s.name === name) ?? UCLA;
@@ -128,13 +133,14 @@ function seedToDetail(s: Seed): PlaceDetail {
         : { "1": Math.max(0, total - five - four - three - two), "2": two, "3": three, "4": four, "5": five },
     school: s.kind === "facility" ? summary(UCLA) : null,
     viewer_review_id: null,
+    viewer_saved: false,
   };
 }
 
 const places: PlaceDetail[] = SEEDS.map(seedToDetail);
 
 const toPlace = (p: PlaceDetail): Place => {
-  const { hours: _h, rating_distribution: _d, school: _s, viewer_review_id: _v, ...rest } = p;
+  const { hours: _h, rating_distribution: _d, school: _s, viewer_review_id: _v, viewer_saved: _vs, ...rest } = p;
   return rest;
 };
 
@@ -167,10 +173,32 @@ SEEDS.forEach((s) => {
       author: author(name, school),
       created_at: at,
       updated_at: at,
+      // Daniel K.'s Gayley review shows the "Edited" marker.
+      edited_at: s.n === 1 && i === 1 ? "2026-10-09T18:10:00Z" : null,
+      editable_until: null,
     });
   });
 });
+// Maya's own review, posted a few minutes before the mock server started, so it is still editable.
+const MAYA_POSTED = new Date(Date.now() - 3 * 60_000).toISOString();
+reviews.push({
+  id: "9a7f3d10-0000-4000-8000-00000000mine",
+  place_id: pid(3),
+  rating: 5,
+  body: "Al pastor with extra pineapple, and they let you pay by card now. Lunch line moves fast if you order at the side window.",
+  visited_month: MAYA_POSTED.slice(0, 7),
+  used_deal: true,
+  helpful_count: 0,
+  viewer_voted: false,
+  is_mine: false,
+  author: author("Maya R."),
+  created_at: MAYA_POSTED,
+  updated_at: MAYA_POSTED,
+  edited_at: null,
+  editable_until: null,
+});
 const deletedReviews = new Map<string, Review>();
+const EDIT_WINDOW_MS = 15 * 60_000;
 
 /* Admin */
 
@@ -205,10 +233,48 @@ function readSession(cookie?: string): Me | null {
     ?.slice(MOCK_COOKIE.length + 1);
   if (!raw) return null;
   try {
-    return JSON.parse(decodeURIComponent(raw)) as Me;
+    // Older mock cookies predate enrollment fields; fill them in.
+    const stored = JSON.parse(decodeURIComponent(raw)) as Partial<Me>;
+    return { enrolled_on: "2024-09", access_until: "2029-09-01", pending_school_change: null, ...stored } as Me;
   } catch {
     return null;
   }
+}
+
+function readSaved(cookie: string | undefined, me: Me): string[] {
+  const raw = cookie
+    ?.split(/;\s*/)
+    .find((c) => c.startsWith(`${SAVED_COOKIE}=`))
+    ?.slice(SAVED_COOKIE.length + 1);
+  if (raw === undefined) return me.email.startsWith("maya") ? [pid(1), pid(2)] : [];
+  return decodeURIComponent(raw).split(",").filter(Boolean);
+}
+
+function writeSaved(ids: string[]) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${SAVED_COOKIE}=${encodeURIComponent(ids.join(","))}; Path=/; Max-Age=2592000; SameSite=Lax`;
+}
+
+const accessUntilFor = (enrolledOn: string) => {
+  const [y, m] = enrolledOn.split("-").map(Number);
+  return `${y + 5}-${String(m).padStart(2, "0")}-01`;
+};
+
+/** Validates enrolled_on like the API: required, at most 12 months ahead, access not over. */
+function checkEnrollment(value: unknown) {
+  const v = typeof value === "string" ? value : "";
+  const m = v.match(/^(\d{4})-(\d{2})$/);
+  if (!m) fail(422, "validation", "Check the highlighted fields.", { enrolled_on: "Pick the month and year you started." });
+  const err = enrollmentError(String(Number(m![2])), m![1], new Date());
+  if (err === ENROLLMENT_TOO_OLD) fail(422, "enrollment_too_old", ENROLLMENT_TOO_OLD);
+  if (err) fail(422, "validation", "Check the highlighted fields.", { enrolled_on: err });
+  return v;
+}
+
+function schoolForDomain(domain: string): SchoolSummary | null {
+  if (domain === "ucla.edu" || domain.endsWith(".ucla.edu")) return summary(UCLA);
+  if (domain === "nyu.edu" || domain.endsWith(".nyu.edu")) return summary(NYU);
+  return null;
 }
 
 function writeSession(me: Me | null) {
@@ -229,6 +295,9 @@ function makeMe(email: string, first: string, last: string, patch: Partial<Me> =
     status: "verified",
     school: summary(UCLA),
     needs_school: false,
+    enrolled_on: "2024-09",
+    access_until: "2029-09-01",
+    pending_school_change: null,
     created_at: "2026-09-01T12:00:00Z",
     ...patch,
   };
@@ -245,6 +314,8 @@ const fail = (status: number, code: string, message: string, fields?: Record<str
 function requireMe(cookie?: string, verified = false): Me {
   const me = readSession(cookie);
   if (!me) return fail(401, "unauthenticated", "Log in to continue.");
+  if (verified && me.status === "expired")
+    return fail(403, "access_expired", `Your Corner access ended ${monthYear(me.access_until)}. Verify a new school email to keep posting.`);
   if (verified && me.status !== "verified") return fail(403, "not_verified", "Verify your school email to do this.");
   return me;
 }
@@ -262,8 +333,15 @@ function paginate<T>(items: T[], query: Record<string, QueryValue>): Page<T> {
   return { items: slice, next_cursor: start + limit < items.length ? String(start + limit) : null };
 }
 
+const isMine = (r: Review, me: Me | null) => !!me && r.author.display_name === me.display_name && r.id.endsWith("mine");
+
 function viewReview(r: Review, me: Me | null): Review {
-  return { ...r, is_mine: !!me && r.author.display_name === me.display_name && r.id.endsWith("mine") };
+  const mine = isMine(r, me);
+  return {
+    ...r,
+    is_mine: mine,
+    editable_until: mine ? new Date(new Date(r.created_at).getTime() + EDIT_WINDOW_MS).toISOString() : null,
+  };
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -296,6 +374,7 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
     const year = Number(body.birth_year);
     if (!year || year < 1900) fields.birth_year = "Enter the year you were born.";
     if (Object.keys(fields).length) fail(422, "validation", "Check the highlighted fields.", fields);
+    const enrolledOn = checkEnrollment(body.enrolled_on);
     const domain = email.split("@")[1];
     if (PERSONAL.test(domain)) fail(422, "not_school_email", "Use the email your school gave you, like name@ucla.edu.", { email: "Use the email your school gave you, like name@ucla.edu." });
     if (new Date().getFullYear() - year < 13) fail(422, "too_young", "Corner is for students 13 and older.", { birth_year: "Corner is for students 13 and older." });
@@ -305,6 +384,8 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
       status: "pending_email",
       school: known ? summary(UCLA) : null,
       needs_school: !known,
+      enrolled_on: enrolledOn,
+      access_until: accessUntilFor(enrolledOn),
     });
     codeAttempts = 5;
     writeSession(user);
@@ -313,7 +394,11 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
 
   if (method === "POST" && path === "/api/auth/school") {
     const current = requireMe(cookie);
-    if (!current.needs_school) fail(403, "forbidden", "Your school is already set.");
+    const repickable = ["pending_email", "pending_school", "rejected"].includes(current.status);
+    if (!current.needs_school && !repickable) fail(403, "forbidden", "Your school is already set.");
+    // Mock rule: other students already wait on the LAUSD domain, so its school is locked.
+    if (!current.needs_school && current.email.includes("lausd"))
+      fail(409, "school_locked", `Other students from this email domain already picked ${current.school?.name ?? "a school"}. Contact us if that's wrong.`);
     let school: SchoolSummary;
     if (typeof body.school_id === "string") {
       const found = SCHOOLS.find((s) => s.id === body.school_id);
@@ -365,6 +450,7 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
     if (email.startsWith("suspended")) fail(403, "suspended", "This account is suspended. Email us if you think that's a mistake.");
     let user: Me;
     if (email === "admin@ucla.edu") user = makeMe(email, "Ari", "Admin", { role: "admin" });
+    else if (email.startsWith("old.grad")) user = makeMe(email, "Jamie", "Park", { status: "expired", enrolled_on: "2021-09", access_until: "2026-09-01" });
     else if (email.includes("lausd")) user = makeMe(email, "Priya", "Shah", { status: "pending_school", school: summary(SCHOOLS[1]) });
     else if (email.includes("pending")) user = makeMe(email, "Maya", "Rivera", { status: "pending_email" });
     else user = makeMe(email.includes("@") ? email : "maya.r@g.ucla.edu", "Maya", "Rivera");
@@ -391,6 +477,87 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
       writeSession(user);
       return { user };
     }
+  }
+
+  /* Changing school */
+  if (path === "/api/me/school-change" && method === "POST") {
+    const current = requireMe(cookie);
+    if (current.status !== "verified" && current.status !== "expired") fail(403, "forbidden", "Finish verifying your current school first.");
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) fail(422, "validation", "Check the highlighted fields.", { email: "Enter your new school email." });
+    const enrolledOn = checkEnrollment(body.enrolled_on);
+    const domain = email.split("@")[1];
+    if (PERSONAL.test(domain)) fail(422, "not_school_email", "Use the email your school gave you, like name@nyu.edu.", { email: "Use the email your school gave you, like name@nyu.edu." });
+    if (email === "taken@nyu.edu" || email === current.email) fail(409, "email_taken", "There's already an account with this email.");
+    const school = schoolForDomain(domain);
+    codeAttempts = 5;
+    const user: Me = { ...current, pending_school_change: { email, needs_school: !school, school, enrolled_on: enrolledOn } };
+    writeSession(user);
+    return { user };
+  }
+  if (path === "/api/me/school-change" && method === "DELETE") {
+    const current = requireMe(cookie);
+    writeSession({ ...current, pending_school_change: null });
+    return undefined;
+  }
+  if ((m = path.match(/^\/api\/me\/school-change\/(school|verify|resend)$/)) && method === "POST") {
+    const current = requireMe(cookie);
+    const change = current.pending_school_change;
+    if (!change) return fail(409, "no_school_change", "There's no school change in progress. Start again from your profile.");
+    if (m[1] === "resend") {
+      codeAttempts = 5;
+      return undefined;
+    }
+    if (m[1] === "school") {
+      const found = SCHOOLS.find((x) => x.id === body.school_id);
+      const ns = (body.new_school ?? null) as Record<string, string> | null;
+      if (!found && !ns) return fail(404, "not_found", "We couldn't find that school.");
+      const school: SchoolSummary = found
+        ? summary(found)
+        : { id: "8d6c1f8e-0000-4000-8000-0000000000fe", name: ns!.name, kind: ns!.kind === "university" ? "university" : "high_school", city: ns!.city, state: ns!.state };
+      const user: Me = { ...current, pending_school_change: { ...change, school, needs_school: false } };
+      writeSession(user);
+      return { user };
+    }
+    if (change.needs_school) fail(409, "school_choice_required", "Pick your new school first.");
+    const code = String(body.code ?? "");
+    if (!/^\d{6}$/.test(code)) fail(422, "validation", "Enter the 6-digit code from your email.", { code: "Enter the 6-digit code from your email." });
+    if (code === "000000") {
+      codeAttempts -= 1;
+      if (codeAttempts < 0) fail(422, "too_many_attempts", "Too many tries for this code. Send a new code and try again.");
+      fail(422, "invalid_code", "That code isn't right. Check the latest email from Corner and try again.", undefined, { attempts_left: codeAttempts });
+    }
+    const edu = change.email.split("@")[1].endsWith(".edu");
+    const user: Me = {
+      ...current,
+      email: change.email,
+      school: change.school,
+      enrolled_on: change.enrolled_on,
+      access_until: accessUntilFor(change.enrolled_on),
+      status: edu ? "verified" : "pending_school",
+      needs_school: false,
+      pending_school_change: null,
+    };
+    writeSession(user);
+    return { user };
+  }
+
+  /* Saved places */
+  if ((m = path.match(/^\/api\/places\/([^/]+)\/save$/)) && (method === "PUT" || method === "DELETE")) {
+    const current = requireMe(cookie);
+    const ids = readSaved(cookie, current).filter((id) => id !== m![1]);
+    const next = method === "PUT" ? [m[1], ...ids] : ids;
+    writeSaved(next);
+    return { saved: method === "PUT" };
+  }
+  if (method === "GET" && path === "/api/me/saved") {
+    const current = requireMe(cookie);
+    const ids = readSaved(cookie, current);
+    const items = ids
+      .map((id) => places.find((p) => p.id === id && p.status === "active"))
+      .filter((p): p is PlaceDetail => !!p)
+      .map(toPlace);
+    return paginate(items, query);
   }
 
   /* Schools */
@@ -451,8 +618,9 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
   if ((m = path.match(/^\/api\/places\/([^/]+)$/)) && method === "GET") {
     const place = places.find((p) => p.id === m![1]) ?? pendingPlaces.find((p) => p.id === m![1]);
     if (!place || (place.status !== "active" && me?.role !== "admin")) return fail(404, "not_found", "We couldn't find that place.");
-    const mine = me ? reviews.find((r) => r.place_id === place.id && r.id.endsWith("mine")) : undefined;
-    return { place: { ...place, viewer_review_id: mine?.id ?? null } };
+    const mine = reviews.find((r) => r.place_id === place.id && isMine(r, me));
+    const saved = me ? readSaved(cookie, me).includes(place.id) : false;
+    return { place: { ...place, viewer_review_id: mine?.id ?? null, viewer_saved: saved } };
   }
 
   if ((m = path.match(/^\/api\/places\/([^/]+)\/reviews$/))) {
@@ -471,7 +639,7 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
     }
     if (method === "POST") {
       const user = requireMe(cookie, true);
-      const existing = reviews.find((r) => r.place_id === placeId && r.id.endsWith("mine"));
+      const existing = reviews.find((r) => r.place_id === placeId && isMine(r, user));
       if (existing) fail(409, "already_reviewed", "You've already reviewed this place. Edit your review instead.", undefined, { review_id: existing.id });
       const fields: Record<string, string> = {};
       const rating = Number(body.rating);
@@ -494,24 +662,45 @@ function route(method: Method, path: string, query: Record<string, QueryValue>, 
         author: author(user.display_name, user.school?.name ?? "UCLA"),
         created_at: now,
         updated_at: now,
+        edited_at: null,
+        editable_until: null,
       };
       reviews = [review, ...reviews];
-      return { review };
+      return { review: viewReview(review, user) };
     }
   }
 
   if ((m = path.match(/^\/api\/reviews\/([^/]+)$/))) {
     const review = reviews.find((r) => r.id === m![1]);
     if (!review) return fail(404, "not_found", "We couldn't find that review.");
-    requireMe(cookie, true);
+    if (method === "GET") return { review: viewReview(review, me) };
+    const user = requireMe(cookie, true);
     if (method === "DELETE") {
       reviews = reviews.filter((r) => r.id !== review.id);
       deletedReviews.set(review.id, review);
       return undefined;
     }
     if (method === "PATCH") {
-      Object.assign(review, body, { updated_at: new Date().toISOString() });
-      return { review };
+      if (!isMine(review, user)) fail(403, "forbidden", "You can only edit your own review.");
+      if (Date.now() > new Date(review.created_at).getTime() + EDIT_WINDOW_MS)
+        fail(403, "edit_window_closed", "Reviews can be edited for 15 minutes after posting.");
+      const fields: Record<string, string> = {};
+      if (body.rating !== undefined && !(Number(body.rating) >= 1 && Number(body.rating) <= 5)) fields.rating = "Pick a rating from 1 to 5 stars.";
+      if (body.body !== undefined && String(body.body).trim().length < 50) fields.body = "Write at least 50 characters so it's useful.";
+      if (Object.keys(fields).length) fail(422, "validation", "Check the highlighted fields.", fields);
+      const changed =
+        (body.rating !== undefined && Number(body.rating) !== review.rating) ||
+        (body.body !== undefined && String(body.body).trim() !== review.body);
+      const now = new Date().toISOString();
+      Object.assign(review, {
+        ...(body.rating !== undefined ? { rating: Number(body.rating) } : {}),
+        ...(body.body !== undefined ? { body: String(body.body).trim() } : {}),
+        ...(body.visited_month !== undefined ? { visited_month: body.visited_month } : {}),
+        ...(body.used_deal !== undefined ? { used_deal: !!body.used_deal } : {}),
+        updated_at: now,
+        ...(changed ? { edited_at: now } : {}),
+      });
+      return { review: viewReview(review, user) };
     }
   }
 

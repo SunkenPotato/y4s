@@ -16,11 +16,17 @@ interface ReviewItemProps {
   /** False hides the Helpful toggle (e.g. signed out); the count still shows. */
   canVote?: boolean;
   busy?: boolean;
+  /** Current time in ms, ticking on the client. Null on the server, which hides the edit countdown. */
+  now?: number | null;
+  /** Where the author edits this review; shown only while editable_until is ahead of `now`. */
+  editHref?: string;
 }
 
 /** Avatar, name, verified badge, date, stars, body, then Helpful and Report. */
-export function ReviewItem({ review, currentYear, onHelpful, onReport, onDelete, canVote = true, busy }: ReviewItemProps) {
+export function ReviewItem({ review, currentYear, onHelpful, onReport, onDelete, canVote = true, busy, now, editHref }: ReviewItemProps) {
   const { author } = review;
+  const msLeft = review.is_mine && review.editable_until && now ? new Date(review.editable_until).getTime() - now : 0;
+  const minutesLeft = Math.ceil(msLeft / 60_000);
   const headingId = `review-${review.id}-by`;
   return (
     <article id={`review-${review.id}`} className={styles.item} aria-labelledby={headingId}>
@@ -32,9 +38,10 @@ export function ReviewItem({ review, currentYear, onHelpful, onReport, onDelete,
           </h3>
           <Badge tone="verified">Verified · {author.school_name}</Badge>
           {review.is_mine ? <Badge tone="neutral">Your review</Badge> : null}
-          <time className={styles.date} dateTime={review.created_at}>
-            {shortDate(review.created_at, currentYear)}
-          </time>
+          <span className={styles.date}>
+            <time dateTime={review.created_at}>{shortDate(review.created_at, currentYear)}</time>
+            {review.edited_at ? " · Edited" : null}
+          </span>
         </div>
         <Stars value={review.rating} className={styles.stars} />
         <p className={styles.body}>{review.body}</p>
@@ -49,6 +56,11 @@ export function ReviewItem({ review, currentYear, onHelpful, onReport, onDelete,
           {review.is_mine ? (
             <>
               <span className={styles.count}>Helpful · {review.helpful_count}</span>
+              {editHref && msLeft > 0 ? (
+                <Button size={36} variant="ghost" href={editHref}>
+                  Edit · {minutesLeft} min left
+                </Button>
+              ) : null}
               {onDelete ? (
                 <Button size={36} variant="ghost" onClick={() => onDelete(review)} disabled={busy}>
                   Delete review

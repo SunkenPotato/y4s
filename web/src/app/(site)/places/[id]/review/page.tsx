@@ -3,17 +3,20 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "@/components/Button/Button";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
-import { Container, Crumbs, LoadingNote, Placeholder, Stack } from "@/components/Layout/Layout";
+import { Container, Crumbs, LoadingNote, PageHead, Placeholder, Stack } from "@/components/Layout/Layout";
+import { ExpiredAlert } from "@/flows/access/ExpiredAlert";
 import { isApiError } from "@/lib/api/errors";
 import { getMe, getServerApi } from "@/lib/api/server";
 import { loginHref } from "@/lib/auth";
+import { requestTime } from "@/lib/requestTime";
 import { ReviewForm } from "./ReviewForm";
 
 type Params = Promise<{ id: string }>;
+type SP = Promise<Record<string, string | string[] | undefined>>;
 
 export const metadata: Metadata = { title: "Write a review" };
 
-export default function WriteReviewPage({ params }: { params: Params }) {
+export default function WriteReviewPage({ params, searchParams }: { params: Params; searchParams: SP }) {
   return (
     <Container>
       <Suspense
@@ -25,24 +28,41 @@ export default function WriteReviewPage({ params }: { params: Params }) {
           </Stack>
         }
       >
-        <WriteReview params={params} />
+        <WriteReview params={params} searchParams={searchParams} />
       </Suspense>
     </Container>
   );
 }
 
-async function WriteReview({ params }: { params: Params }) {
+async function WriteReview({ params, searchParams }: { params: Params; searchParams: SP }) {
   const { id } = await params;
+  const editParam = (await searchParams).edit;
+  const editId = typeof editParam === "string" && editParam ? editParam : null;
   const api = await getServerApi();
   const me = await getMe(api);
-  if (!me) redirect(loginHref(`/places/${id}/review`));
+  if (!me) redirect(loginHref(`/places/${id}/review${editId ? `?edit=${encodeURIComponent(editId)}` : ""}`));
 
   const place = await api.place(id).catch((e) => {
     if (isApiError(e) && (e.status === 404 || e.status === 422)) notFound();
     throw e;
   });
 
-  const crumbs = <Crumbs items={[{ label: place.name, href: `/places/${place.id}` }, { label: "Write a review" }]} />;
+  const crumbs = (
+    <Crumbs items={[{ label: place.name, href: `/places/${place.id}` }, { label: editId ? "Edit your review" : "Write a review" }]} />
+  );
+
+  // Expired students can browse and save, but not post or edit.
+  if (me.status === "expired") {
+    return (
+      <>
+        {crumbs}
+        <Stack gap={5} style={{ marginTop: "var(--space-4)" }}>
+          <PageHead title={`${editId ? "Edit your review of" : "Review"} ${place.name}`} size="title" />
+          <ExpiredAlert accessUntil={me.access_until} />
+        </Stack>
+      </>
+    );
+  }
 
   if (me.status !== "verified") {
     const pending = me.status === "pending_email" || me.status === "pending_school";
@@ -67,6 +87,39 @@ async function WriteReview({ params }: { params: Params }) {
               ? "We'll email you as soon as it's approved, usually within a day."
               : "Only verified students can post reviews on Corner."}
         </EmptyState>
+      </>
+    );
+  }
+
+  if (editId) {
+    const review = await api.review(editId).catch((e) => {
+      if (isApiError(e) && (e.status === 404 || e.status === 422)) return null;
+      throw e;
+    });
+    if (!review || !review.is_mine || review.place_id !== place.id) {
+      return (
+        <>
+          {crumbs}
+          <EmptyState
+            icon="pen"
+            headingLevel={1}
+            title="We couldn't find that review"
+            action={<Button href={`/places/${place.id}`}>Back to {place.name}</Button>}
+          >
+            Only the person who wrote a review can edit it.
+          </EmptyState>
+        </>
+      );
+    }
+    return (
+      <>
+        {crumbs}
+        <ReviewForm
+          place={{ id: place.id, name: place.name, hasDeal: !!place.student_discount }}
+          author={{ displayName: me.display_name, schoolName: review.author.school_name }}
+          existing={review}
+          renderedAt={await requestTime()}
+        />
       </>
     );
   }

@@ -20,5 +20,6 @@ export default function SignupPage() {
 async function Signup() {
   const me = await getMe().catch(() => null);
   if (me?.status === "verified") redirect("/");
+  if (me?.status === "expired") redirect("/me");
   return <SignupFlow initialMe={me} />;
 }

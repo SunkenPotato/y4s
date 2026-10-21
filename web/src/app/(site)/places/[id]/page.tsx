@@ -8,6 +8,8 @@ import { RatingSummary } from "@/components/RatingSummary/RatingSummary";
 import { Tile } from "@/components/Tile/Tile";
 import { isApiError } from "@/lib/api/errors";
 import { getMe, getServerApi } from "@/lib/api/server";
+import { viewerOf } from "@/lib/auth";
+import { requestTime } from "@/lib/requestTime";
 import { CATEGORY_LABEL, CATEGORY_SINGULAR, distance, price } from "@/lib/format";
 import { filterHref } from "@/lib/filters";
 import { PlaceActions } from "./PlaceActions";
@@ -51,13 +53,17 @@ async function PlaceContent({ params }: { params: Params }) {
   const { id } = await params;
   const api = await getServerApi();
   const [place, me] = await Promise.all([loadPlace(id), getMe(api).catch(() => null)]);
-  const reviews = await api.reviews(id, { sort: "helpful" }).catch(() => ({ items: [], next_cursor: null }));
+  const [reviews, ownReview, renderedAt] = await Promise.all([
+    api.reviews(id, { sort: "helpful" }).catch(() => ({ items: [], next_cursor: null })),
+    place.viewer_review_id ? api.review(place.viewer_review_id).catch(() => null) : Promise.resolve(null),
+    requestTime(),
+  ]);
 
   const street = place.address.split(",")[0];
   const away = place.kind === "facility" ? "On campus" : distance(place.distance_mi) ? `${distance(place.distance_mi)} from campus` : null;
   const meta = [place.subcategory || CATEGORY_SINGULAR[place.category], price(place.price_level), street, away].filter(Boolean).join(" · ");
   const schoolName = place.school?.name ?? me?.school?.name;
-  const viewer = !me ? "signed_out" : me.status === "verified" ? "verified" : "unverified";
+  const viewer = viewerOf(me);
 
   return (
     <>
@@ -79,7 +85,9 @@ async function PlaceContent({ params }: { params: Params }) {
             <OpenNow hours={place.hours} className={styles.open} />
           </p>
           <div className={styles.actions}>
-            <PlaceActions place={place} signedIn={!!me} />
+            <PlaceActions place={place} signedIn={!!me} ownReviewEditableUntil={ownReview?.editable_until ?? null}
+              renderedAt={renderedAt}
+            />
           </div>
         </div>
         <div className={styles.heroSide}>
@@ -89,7 +97,12 @@ async function PlaceContent({ params }: { params: Params }) {
 
       <Columns gap={7} className={styles.body}>
         <MainColumn>
-          <ReviewList placeId={place.id} placeName={place.name} initial={reviews} viewer={viewer} open={place.status === "active"} />
+          <ReviewList placeId={place.id} placeName={place.name} initial={reviews}
+            viewer={viewer}
+            accessUntil={me?.access_until}
+            renderedAt={renderedAt}
+            open={place.status === "active"}
+          />
         </MainColumn>
         <Aside label="Details">
           {place.student_discount ? (

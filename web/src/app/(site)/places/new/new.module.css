@@ -28,3 +28,36 @@
   margin-bottom: var(--space-2);
   font-weight: 600;
 }
+
+.hours {
+  min-width: 0;
+}
+
+.hoursRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.days {
+  flex: 0 1 170px;
+}
+
+.time {
+  flex: 1 1 180px;
+}
+
+.hoursRow > button {
+  margin-top: 2px;
+}
+
+.flushLeft {
+  margin-left: calc(-1 * var(--space-4));
+}
+
+.error {
+  font: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-danger);
+}

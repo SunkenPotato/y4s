@@ -124,3 +124,12 @@ export function baseDomain(domain: string): string {
 }
 
 export const emailDomain = (email: string) => email.split("@")[1] ?? "";
+
+/** "2029-09-01" or "2029-09" to "Sep 2029". */
+export function monthYear(date: string): string {
+  const [y, m] = date.split("-").map(Number);
+  if (!y || !m) return date;
+  return `${MONTHS[m - 1]} ${y}`;
+}
+
+export const MONTH_NAMES = MONTHS_LONG;

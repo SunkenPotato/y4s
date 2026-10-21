@@ -19,6 +19,7 @@ import type {
   ReviewInput,
   ReviewSort,
   School,
+  SchoolChangeInput,
   SchoolKind,
   SignupInput,
   Uuid,
@@ -45,6 +46,22 @@ export function createApi(t: Transport) {
     updateMe: (input: { first_name?: string; last_name?: string }) =>
       t<{ user: Me }>("/api/me", { method: "PATCH", body: input }).then((r) => r.user),
 
+    /* Changing school */
+    startSchoolChange: (input: SchoolChangeInput) =>
+      t<{ user: Me }>("/api/me/school-change", { method: "POST", body: input }).then((r) => r.user),
+    chooseChangeSchool: (input: ChooseSchoolInput) =>
+      t<{ user: Me }>("/api/me/school-change/school", { method: "POST", body: input }).then((r) => r.user),
+    verifySchoolChange: (code: string) =>
+      t<{ user: Me }>("/api/me/school-change/verify", { method: "POST", body: { code } }).then((r) => r.user),
+    resendSchoolChange: () => t<void>("/api/me/school-change/resend", { method: "POST" }),
+    cancelSchoolChange: () => t<void>("/api/me/school-change", { method: "DELETE" }),
+
+    /* Saved places */
+    save: (placeId: Uuid) => t<{ saved: boolean }>(`/api/places/${enc(placeId)}/save`, { method: "PUT" }),
+    unsave: (placeId: Uuid) => t<{ saved: boolean }>(`/api/places/${enc(placeId)}/save`, { method: "DELETE" }),
+    saved: (cursor?: string | null, limit?: number) =>
+      t<Page<Place>>("/api/me/saved", { query: { cursor, limit } }),
+
     /* Schools */
     schools: (q: string, opts: { kind?: SchoolKind; limit?: number } = {}) =>
       t<{ items: School[] }>("/api/schools", { query: { q, kind: opts.kind, limit: opts.limit ?? 10 } }).then(
@@ -68,6 +85,7 @@ export function createApi(t: Transport) {
       t<{ review: Review }>(`/api/places/${enc(placeId)}/reviews`, { method: "POST", body: input }).then(
         (r) => r.review,
       ),
+    review: (id: Uuid) => t<{ review: Review }>(`/api/reviews/${enc(id)}`).then((r) => r.review),
     updateReview: (id: Uuid, input: Partial<ReviewInput>) =>
       t<{ review: Review }>(`/api/reviews/${enc(id)}`, { method: "PATCH", body: input }).then((r) => r.review),
     deleteReview: (id: Uuid) => t<void>(`/api/reviews/${enc(id)}`, { method: "DELETE" }),

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Container, LoadingNote, Placeholder, Stack } from "@/components/Layout/Layout";
-import { getMe } from "@/lib/api/server";
+import { getMe, getServerApi } from "@/lib/api/server";
 import { loginHref } from "@/lib/auth";
 import { Profile } from "./Profile";
 
@@ -27,7 +27,9 @@ export default function MePage() {
 }
 
 async function MeContent() {
-  const me = await getMe();
+  const api = await getServerApi();
+  const me = await getMe(api);
   if (!me) redirect(loginHref("/me"));
-  return <Profile initialMe={me} />;
+  const saved = await api.saved().catch(() => null);
+  return <Profile initialMe={me} saved={saved} />;
 }

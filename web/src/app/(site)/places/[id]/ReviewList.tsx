@@ -11,8 +11,9 @@ import { Segmented } from "@/components/Segmented/Segmented";
 import { useToast } from "@/components/Toast/Toast";
 import { api, isApiError } from "@/lib/api/client";
 import type { Page, Review, ReviewSort } from "@/lib/api/types";
-import { loginHref } from "@/lib/auth";
+import { accessEndedMessage, loginHref, type Viewer } from "@/lib/auth";
 import { useCurrentYear } from "@/lib/hooks/useCurrentYear";
+import { useNow } from "@/lib/hooks/useNow";
 import { ReportDialog } from "./ReportDialog";
 import styles from "./place.module.css";
 
@@ -26,15 +27,20 @@ interface ReviewListProps {
   placeId: string;
   placeName: string;
   initial: Page<Review>;
-  viewer: "signed_out" | "unverified" | "verified";
+  viewer: Viewer;
+  /** For the access-ended message when viewer is "expired". */
+  accessUntil?: string;
+  /** Server render time, so edit countdowns render before hydration. */
+  renderedAt?: number;
   /** False for places still pending approval. */
   open?: boolean;
 }
 
-export function ReviewList({ placeId, placeName, initial, viewer, open = true }: ReviewListProps) {
+export function ReviewList({ placeId, placeName, initial, viewer, accessUntil, renderedAt, open = true }: ReviewListProps) {
   const router = useRouter();
   const toast = useToast();
   const year = useCurrentYear();
+  const now = useNow(1000, renderedAt ?? null);
   const [sort, setSort] = useState<ReviewSort>("helpful");
   const [items, setItems] = useState(initial.items);
   const [next, setNext] = useState(initial.next_cursor);
@@ -76,6 +82,10 @@ export function ReviewList({ placeId, placeName, initial, viewer, open = true }:
       toast.show({ message: "Verify your school email to vote." });
       return;
     }
+    if (viewer === "expired" && accessUntil) {
+      toast.show({ message: accessEndedMessage(accessUntil) });
+      return;
+    }
     if (voting.has(review.id)) return;
     const want = !review.viewer_voted;
     // Optimistic: flip now, reconcile with the server's count, roll back on failure.
@@ -86,7 +96,14 @@ export function ReviewList({ placeId, placeName, initial, viewer, open = true }:
       patch(review.id, res);
     } catch (e) {
       patch(review.id, { viewer_voted: review.viewer_voted, helpful_count: review.helpful_count });
-      toast.show({ message: isApiError(e) ? e.message : "Couldn't save your vote. Try again." });
+      toast.show({
+        message:
+          isApiError(e) && e.code === "access_expired" && accessUntil
+            ? accessEndedMessage(accessUntil)
+            : isApiError(e)
+              ? e.message
+              : "Couldn't save your vote. Try again.",
+      });
     } finally {
       setVoting((s) => {
         const n = new Set(s);
@@ -174,6 +191,8 @@ export function ReviewList({ placeId, placeName, initial, viewer, open = true }:
               onReport={report}
               onDelete={remove}
               busy={voting.has(r.id)}
+              now={now}
+              editHref={`/places/${placeId}/review?edit=${r.id}`}
             />
           ))}
         </div>

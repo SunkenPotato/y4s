@@ -69,3 +69,7 @@
 .more {
   margin-top: var(--space-6);
 }
+
+.savedIcon {
+  color: var(--color-accent);
+}

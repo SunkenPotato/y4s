@@ -58,6 +58,22 @@ impl AppError {
         )
     }
 
+    pub fn access_expired() -> Self {
+        Self::new(
+            StatusCode::FORBIDDEN,
+            "access_expired",
+            "Your Corner access ended 5 years after you started. Change your school to keep posting.",
+        )
+    }
+
+    pub fn mail_failed() -> Self {
+        Self::new(
+            StatusCode::BAD_GATEWAY,
+            "mail_failed",
+            "We couldn't send the email. Try again in a minute.",
+        )
+    }
+
     pub fn not_found() -> Self {
         Self::new(StatusCode::NOT_FOUND, "not_found", "We couldn't find that.")
     }
@@ -141,6 +157,13 @@ impl From<sqlx::Error> for AppError {
         }
         tracing::error!(error = %err, "database error");
         Self::internal()
+    }
+}
+
+impl From<crate::mail::MailError> for AppError {
+    fn from(err: crate::mail::MailError) -> Self {
+        tracing::error!(error = %err, "email send failed");
+        Self::mail_failed()
     }
 }
 

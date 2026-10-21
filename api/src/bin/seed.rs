@@ -15,6 +15,7 @@ const ADMIN_EMAIL: &str = "admin@ucla.edu";
 const ADMIN_PASSWORD: &str = "corner-admin-dev";
 const DEMO_EMAIL: &str = "maya.r@g.ucla.edu";
 const DEMO_PASSWORD: &str = "corner-dev-123";
+const EXPIRED_EMAIL: &str = "old.grad@ucla.edu";
 
 // key, name, kind, city, state, lat, lng, website, domain, domain status
 type SchoolSeed = (&'static str, &'static str, &'static str, &'static str, &'static str, f64, f64, &'static str, &'static str, &'static str);
@@ -27,35 +28,37 @@ const SCHOOLS: &[SchoolSeed] = &[
     ("bhhs", "Beverly Hills High School", "high_school", "Beverly Hills", "CA", 34.0605, -118.4130, "https://bhhs.bhusd.org", "stu.bhusd.org", "pending"),
 ];
 
-// key, email, first, last, birth year, school key
-type UserSeed = (&'static str, &'static str, &'static str, &'static str, i32, &'static str);
+// key, email, first, last, birth year, school key, enrolled (YYYY-MM)
+type UserSeed = (&'static str, &'static str, &'static str, &'static str, i32, &'static str, &'static str);
 const USERS: &[UserSeed] = &[
-    ("admin", ADMIN_EMAIL, "Corner", "Admin", 1998, "ucla"),
-    ("maya", DEMO_EMAIL, "Maya", "Rivera", 2005, "ucla"),
-    ("jordan", "jordan.kim@g.ucla.edu", "Jordan", "Kim", 2004, "ucla"),
-    ("priya", "priya.s@g.ucla.edu", "Priya", "Shah", 2005, "ucla"),
-    ("marcus", "marcus.w@g.ucla.edu", "Marcus", "Webb", 2003, "ucla"),
-    ("sofia", "sofia.g@g.ucla.edu", "Sofia", "Gutierrez", 2006, "ucla"),
-    ("ethan", "ethan.n@g.ucla.edu", "Ethan", "Nguyen", 2004, "ucla"),
-    ("hannah", "hannah.l@g.ucla.edu", "Hannah", "Lee", 2005, "ucla"),
-    ("diego", "diego.m@g.ucla.edu", "Diego", "Morales", 2002, "ucla"),
-    ("aisha", "aisha.b@g.ucla.edu", "Aisha", "Bello", 2005, "ucla"),
-    ("noah", "noah.p@g.ucla.edu", "Noah", "Park", 2006, "ucla"),
-    ("chloe", "chloe.d@g.ucla.edu", "Chloe", "Dubois", 2004, "ucla"),
-    ("sam", "sam.o@g.ucla.edu", "Sam", "Okafor", 2003, "ucla"),
-    ("liam", "liam.f@g.ucla.edu", "Liam", "Foster", 2005, "ucla"),
-    ("lena", "lena.t@student.smc.edu", "Lena", "Torres", 2005, "smc"),
-    ("kai", "kai.h@student.smc.edu", "Kai", "Hoffman", 2004, "smc"),
-    ("rosa", "rosa.v@student.smc.edu", "Rosa", "Vega", 2006, "smc"),
-    ("jayden", "jayden.c@students.lausd.net", "Jayden", "Cruz", 2009, "uhs"),
-    ("emily", "emily.z@students.lausd.net", "Emily", "Zhang", 2010, "uhs"),
-    ("omar", "omar.f@students.lausd.net", "Omar", "Farouk", 2009, "uhs"),
-    ("ben", "ben.a@nyu.edu", "Ben", "Adler", 2004, "nyu"),
-    ("grace", "grace.y@nyu.edu", "Grace", "Yoon", 2005, "nyu"),
-    ("tyler", "tyler.r@utexas.edu", "Tyler", "Reyes", 2004, "ut"),
-    ("olivia", "olivia.m@utexas.edu", "Olivia", "Martin", 2005, "ut"),
+    ("admin", ADMIN_EMAIL, "Corner", "Admin", 1998, "ucla", "2022-09"),
+    ("maya", DEMO_EMAIL, "Maya", "Rivera", 2005, "ucla", "2024-09"),
+    ("jordan", "jordan.kim@g.ucla.edu", "Jordan", "Kim", 2004, "ucla", "2023-09"),
+    ("priya", "priya.s@g.ucla.edu", "Priya", "Shah", 2005, "ucla", "2024-09"),
+    ("marcus", "marcus.w@g.ucla.edu", "Marcus", "Webb", 2003, "ucla", "2022-09"),
+    ("sofia", "sofia.g@g.ucla.edu", "Sofia", "Gutierrez", 2006, "ucla", "2025-09"),
+    ("ethan", "ethan.n@g.ucla.edu", "Ethan", "Nguyen", 2004, "ucla", "2023-09"),
+    ("hannah", "hannah.l@g.ucla.edu", "Hannah", "Lee", 2005, "ucla", "2024-09"),
+    ("diego", "diego.m@g.ucla.edu", "Diego", "Morales", 2002, "ucla", "2022-09"),
+    ("aisha", "aisha.b@g.ucla.edu", "Aisha", "Bello", 2005, "ucla", "2024-09"),
+    ("noah", "noah.p@g.ucla.edu", "Noah", "Park", 2006, "ucla", "2025-09"),
+    ("chloe", "chloe.d@g.ucla.edu", "Chloe", "Dubois", 2004, "ucla", "2023-09"),
+    ("sam", "sam.o@g.ucla.edu", "Sam", "Okafor", 2003, "ucla", "2022-09"),
+    ("liam", "liam.f@g.ucla.edu", "Liam", "Foster", 2005, "ucla", "2024-09"),
+    ("lena", "lena.t@student.smc.edu", "Lena", "Torres", 2005, "smc", "2025-01"),
+    ("kai", "kai.h@student.smc.edu", "Kai", "Hoffman", 2004, "smc", "2024-09"),
+    ("rosa", "rosa.v@student.smc.edu", "Rosa", "Vega", 2006, "smc", "2025-09"),
+    ("jayden", "jayden.c@students.lausd.net", "Jayden", "Cruz", 2009, "uhs", "2023-08"),
+    ("emily", "emily.z@students.lausd.net", "Emily", "Zhang", 2010, "uhs", "2024-08"),
+    ("omar", "omar.f@students.lausd.net", "Omar", "Farouk", 2009, "uhs", "2023-08"),
+    ("ben", "ben.a@nyu.edu", "Ben", "Adler", 2004, "nyu", "2024-09"),
+    ("grace", "grace.y@nyu.edu", "Grace", "Yoon", 2005, "nyu", "2025-09"),
+    ("tyler", "tyler.r@utexas.edu", "Tyler", "Reyes", 2004, "ut", "2023-09"),
+    ("olivia", "olivia.m@utexas.edu", "Olivia", "Martin", 2005, "ut", "2024-09"),
     // Waiting on the pending stu.bhusd.org domain request.
-    ("ava", "ava.s@stu.bhusd.org", "Ava", "Stein", 2009, "bhhs"),
+    ("ava", "ava.s@stu.bhusd.org", "Ava", "Stein", 2009, "bhhs", "2023-08"),
+    // Started in 2020, so access ended 2025-09-01: shows the `expired` state.
+    ("oldgrad", EXPIRED_EMAIL, "Riley", "Grant", 1998, "ucla", "2020-09"),
 ];
 
 struct PlaceSeed {
@@ -413,7 +416,9 @@ async fn main() -> anyhow::Result<()> {
     let demo_hash = hash_password_blocking(DEMO_PASSWORD);
     let admin_hash = hash_password_blocking(ADMIN_PASSWORD);
     let mut user_ids: HashMap<&str, Uuid> = HashMap::new();
-    for (i, (key, email, first, last, birth_year, school)) in USERS.iter().enumerate() {
+    let mut user_schools: HashMap<&str, Uuid> = HashMap::new();
+    for (i, (key, email, first, last, birth_year, school, enrolled)) in USERS.iter().enumerate() {
+        let enrolled_on = NaiveDate::parse_from_str(&format!("{enrolled}-01"), "%Y-%m-%d")?;
         let id = Uuid::new_v4();
         let domain = corner_api::domains::domain_key(email.split_once('@').map(|(_, d)| d).unwrap_or_default());
         let (status, role) = match *key {
@@ -424,8 +429,8 @@ async fn main() -> anyhow::Result<()> {
         let created = now - Duration::days(200 - i as i64);
         sqlx::query(
             "INSERT INTO users (id, email, email_domain, password_hash, first_name, last_name, birth_year, role, status,
-                                school_id, verified_at, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)",
+                                school_id, verified_at, created_at, enrolled_on)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12)",
         )
         .bind(id)
         .bind(email)
@@ -438,9 +443,11 @@ async fn main() -> anyhow::Result<()> {
         .bind(status)
         .bind(school_ids[school])
         .bind(created)
+        .bind(enrolled_on)
         .execute(&mut *tx)
         .await?;
         user_ids.insert(key, id);
+        user_schools.insert(key, school_ids[school]);
     }
 
     for (key, .., domain, status) in SCHOOLS {
@@ -502,7 +509,7 @@ async fn main() -> anyhow::Result<()> {
     let voters: Vec<&str> = USERS
         .iter()
         .map(|u| u.0)
-        .filter(|k| !matches!(*k, "admin" | "ava"))
+        .filter(|k| !matches!(*k, "admin" | "ava" | "oldgrad"))
         .collect();
     let mut review_ids: HashMap<(&str, &str), Uuid> = HashMap::new();
     let mut vote_total = 0;
@@ -511,8 +518,9 @@ async fn main() -> anyhow::Result<()> {
         let created = now - Duration::days(*days) - Duration::hours((i % 9) as i64 + 1);
         let visited = NaiveDate::from_ymd_opt(created.year(), created.month(), 1);
         sqlx::query(
-            "INSERT INTO reviews (id, place_id, user_id, rating, body, visited_month, used_deal, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)",
+            "INSERT INTO reviews (id, place_id, user_id, rating, body, visited_month, used_deal, created_at, updated_at,
+                                  school_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9)",
         )
         .bind(id)
         .bind(place_ids[place])
@@ -522,6 +530,7 @@ async fn main() -> anyhow::Result<()> {
         .bind(visited)
         .bind(used_deal)
         .bind(created)
+        .bind(user_schools[author])
         .execute(&mut *tx)
         .await
         .map_err(|e| anyhow::anyhow!("review {place}/{author}: {e}"))?;
@@ -552,6 +561,15 @@ async fn main() -> anyhow::Result<()> {
     .execute(&mut *tx)
     .await?;
 
+    for (i, place) in ["strathmore", "library"].iter().enumerate() {
+        sqlx::query("INSERT INTO saved_places (user_id, place_id, created_at) VALUES ($1, $2, $3)")
+            .bind(user_ids["maya"])
+            .bind(place_ids[place])
+            .bind(now - Duration::days(3 - i as i64))
+            .execute(&mut *tx)
+            .await?;
+    }
+
     tx.commit().await?;
 
     println!("Seeded Corner:");
@@ -559,6 +577,7 @@ async fn main() -> anyhow::Result<()> {
     println!("  {} users, {} places (2 pending), {} reviews, {} helpful votes, 1 open report", USERS.len(), places.len(), REVIEWS.len(), vote_total);
     println!();
     println!("  Admin:     {ADMIN_EMAIL} / {ADMIN_PASSWORD}");
-    println!("  Demo user: {DEMO_EMAIL} / {DEMO_PASSWORD}");
+    println!("  Demo user: {DEMO_EMAIL} / {DEMO_PASSWORD}  (2 saved places)");
+    println!("  Expired:   {EXPIRED_EMAIL} / {DEMO_PASSWORD}  (enrolled 2020-09, access ended 2025-09-01)");
     Ok(())
 }

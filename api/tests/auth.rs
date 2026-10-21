@@ -56,14 +56,14 @@ async fn signup_validation_too_young_and_duplicate() {
     let res = c
         .post(
             "/api/auth/signup",
-            json!({ "email": "kid@ucla.edu", "password": PASSWORD, "first_name": "K", "last_name": "D", "birth_year": this_year - 12 }),
+            json!({ "email": "kid@ucla.edu", "password": PASSWORD, "first_name": "K", "last_name": "D", "birth_year": this_year - 12, "enrolled_on": "2024-09" }),
         )
         .await;
     assert_eq!(res.code(), "too_young");
     let res = c
         .post(
             "/api/auth/signup",
-            json!({ "email": "teen@ucla.edu", "password": PASSWORD, "first_name": "T", "last_name": "N", "birth_year": this_year - 13 }),
+            json!({ "email": "teen@ucla.edu", "password": PASSWORD, "first_name": "T", "last_name": "N", "birth_year": this_year - 13, "enrolled_on": "2024-09" }),
         )
         .await;
     assert_eq!(res.status, StatusCode::CREATED);

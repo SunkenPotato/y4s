@@ -5,4 +5,6 @@ pub mod me;
 pub mod places;
 pub mod reports;
 pub mod reviews;
+pub mod saved;
+pub mod school_change;
 pub mod schools;

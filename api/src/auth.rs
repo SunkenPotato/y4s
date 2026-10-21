@@ -125,7 +125,7 @@ pub async fn user_for_token(db: &PgPool, token: &str) -> AppResult<Option<User>>
 /// Any signed-in user, whatever their status.
 pub struct CurrentUser(pub User);
 
-/// A signed-in user with status `verified`.
+/// A signed-in user with status `verified` whose access hasn't expired.
 pub struct VerifiedUser(pub User);
 
 /// A signed-in user with role `admin`.
@@ -159,10 +159,11 @@ impl FromRequestParts<AppState> for VerifiedUser {
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
         let CurrentUser(user) = CurrentUser::from_request_parts(parts, state).await?;
-        if user.status != "verified" {
-            return Err(AppError::not_verified());
+        match crate::enrollment::effective_status(&user) {
+            "verified" => Ok(VerifiedUser(user)),
+            "expired" => Err(AppError::access_expired()),
+            _ => Err(AppError::not_verified()),
         }
-        Ok(VerifiedUser(user))
     }
 }
 

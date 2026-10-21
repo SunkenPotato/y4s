@@ -10,7 +10,7 @@ use crate::auth::{check_write_limit, CurrentUser, MaybeUser, VerifiedUser};
 use crate::db::is_unique_violation;
 use crate::error::{AppError, AppResult, FieldErrors};
 use crate::extract::{ApiJson, ApiPath, ApiQuery};
-use crate::models::{Review, ReviewRow};
+use crate::models::{Review, ReviewRow, EDIT_WINDOW_MINUTES};
 use crate::pagination::PageReq;
 use crate::queries::{self, REVIEW_SELECT};
 use crate::routes::places::visible_place;
@@ -164,8 +164,8 @@ pub async fn create(
     }
     let id = Uuid::new_v4();
     let inserted = sqlx::query(
-        "INSERT INTO reviews (id, place_id, user_id, rating, body, visited_month, used_deal)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        "INSERT INTO reviews (id, place_id, user_id, rating, body, visited_month, used_deal, school_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
     )
     .bind(id)
     .bind(place_id)
@@ -174,6 +174,7 @@ pub async fn create(
     .bind(body.body.unwrap_or_default().trim())
     .bind(visited)
     .bind(body.used_deal.unwrap_or(false))
+    .bind(user.school_id)
     .execute(&state.db)
     .await;
     if let Err(e) = inserted {
@@ -202,6 +203,13 @@ pub async fn update(
     if review.user_id != user.id {
         return Err(AppError::forbidden("You can only edit your own reviews."));
     }
+    if Utc::now() > review.created_at + Duration::minutes(EDIT_WINDOW_MINUTES) {
+        return Err(AppError::new(
+            StatusCode::FORBIDDEN,
+            "edit_window_closed",
+            "Reviews can be edited for 15 minutes after posting.",
+        ));
+    }
     let mut errors = FieldErrors::default();
     if body.rating.is_some() {
         validate_rating(&mut errors, body.rating);
@@ -216,18 +224,43 @@ pub async fn update(
     };
     errors.check()?;
 
+    let rating = body.rating.map(|r| r as i16).unwrap_or(review.rating);
+    let text = body.body.map(|b| b.trim().to_string()).unwrap_or_else(|| review.body.clone());
+    // Only a real change to what readers judge by (rating or text) marks the review as edited.
+    let edited = rating != review.rating || text != review.body;
     sqlx::query(
-        "UPDATE reviews SET rating = $2, body = $3, visited_month = $4, used_deal = $5, updated_at = now()
+        "UPDATE reviews SET rating = $2, body = $3, visited_month = $4, used_deal = $5, updated_at = now(),
+                edited_at = CASE WHEN $6 THEN now() ELSE edited_at END
          WHERE id = $1",
     )
     .bind(id)
-    .bind(body.rating.map(|r| r as i16).unwrap_or(review.rating))
-    .bind(body.body.map(|b| b.trim().to_string()).unwrap_or(review.body))
+    .bind(rating)
+    .bind(text)
     .bind(visited)
     .bind(body.used_deal.unwrap_or(review.used_deal))
+    .bind(edited)
     .execute(&state.db)
     .await?;
     Ok(Json(review_json(&state, id, user.id).await?))
+}
+
+/// Deleted reviews are 404 except to their author during the restore window.
+pub async fn get_review(
+    State(state): State<AppState>,
+    MaybeUser(viewer): MaybeUser,
+    ApiPath(id): ApiPath<Uuid>,
+) -> AppResult<Json<Value>> {
+    let viewer_id = viewer.as_ref().map(|u| u.id);
+    let review = load_review(&state, id, viewer_id).await?;
+    if let Some(deleted_at) = review.deleted_at {
+        let restorable = viewer_id == Some(review.user_id)
+            && Utc::now() - deleted_at <= Duration::minutes(RESTORE_WINDOW_MINUTES);
+        if !restorable {
+            return Err(AppError::not_found());
+        }
+    }
+    visible_place(&state, review.place_id, viewer.as_ref()).await?;
+    Ok(Json(json!({ "review": Review::from_row(&review, viewer_id) })))
 }
 
 pub async fn delete(

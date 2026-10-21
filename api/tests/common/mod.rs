@@ -116,14 +116,32 @@ impl TestApp {
     }
 
     pub async fn signup(&self, email: &str) -> (Client<'_>, Resp) {
+        self.signup_enrolled(email, "2024-09").await
+    }
+
+    pub async fn signup_enrolled(&self, email: &str, enrolled_on: &str) -> (Client<'_>, Resp) {
         let mut c = self.client();
         let res = c
             .post(
                 "/api/auth/signup",
-                json!({ "email": email, "password": PASSWORD, "first_name": "Test", "last_name": "Student", "birth_year": 2005 }),
+                json!({ "email": email, "password": PASSWORD, "first_name": "Test", "last_name": "Student",
+                        "birth_year": 2005, "enrolled_on": enrolled_on }),
             )
             .await;
         (c, res)
+    }
+
+    /// Moves a user's enrollment so `access_until` lands `months_from_now` months from the 1st of this month.
+    pub async fn set_access_until(&self, email: &str, months_from_now: i32) {
+        sqlx::query(
+            "UPDATE users SET enrolled_on = (date_trunc('month', now())::date
+                 + make_interval(months => $2 - 60))::date WHERE email = $1",
+        )
+        .bind(email)
+        .bind(months_from_now)
+        .execute(&self.pool)
+        .await
+        .unwrap();
     }
 
     /// Signs up on an approved domain and enters the code.

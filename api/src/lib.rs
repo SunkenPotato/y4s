@@ -2,6 +2,7 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod domains;
+pub mod enrollment;
 pub mod error;
 pub mod extract;
 pub mod geocode;
@@ -11,6 +12,7 @@ pub mod pagination;
 pub mod queries;
 pub mod rate_limit;
 pub mod routes;
+pub mod verification;
 
 use std::sync::Arc;
 
@@ -29,7 +31,9 @@ use crate::error::AppError;
 use crate::geocode::DynGeocoder;
 use crate::mail::DynMailer;
 use crate::rate_limit::RateLimiter;
-use crate::routes::{admin, auth as auth_routes, feed, me, places, reports, reviews, schools};
+use crate::routes::{
+    admin, auth as auth_routes, feed, me, places, reports, reviews, saved, school_change, schools,
+};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -77,12 +81,24 @@ pub fn app(state: AppState) -> Router {
         .nest("/auth", auth)
         .nest("/admin", admin)
         .route("/me", get(me::get_me).patch(me::patch_me))
+        .route("/me/saved", get(saved::list))
+        .route(
+            "/me/school-change",
+            post(school_change::request).delete(school_change::cancel),
+        )
+        .route("/me/school-change/school", post(school_change::choose_school))
+        .route("/me/school-change/verify", post(school_change::verify))
+        .route("/me/school-change/resend", post(school_change::resend))
         .route("/schools", get(schools::list))
         .route("/feed", get(feed::get_feed))
         .route("/places", get(places::list).post(places::create))
         .route("/places/{id}", get(places::get_place))
+        .route("/places/{id}/save", put(saved::save).delete(saved::unsave))
         .route("/places/{id}/reviews", get(reviews::list).post(reviews::create))
-        .route("/reviews/{id}", axum::routing::patch(reviews::update).delete(reviews::delete))
+        .route(
+            "/reviews/{id}",
+            get(reviews::get_review).patch(reviews::update).delete(reviews::delete),
+        )
         .route("/reviews/{id}/restore", post(reviews::restore))
         .route("/reviews/{id}/vote", put(reviews::vote).delete(reviews::unvote))
         .route("/reports", post(reports::create));

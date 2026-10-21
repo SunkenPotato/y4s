@@ -82,18 +82,30 @@ impl Mailer for SmtpMailer {
     }
 }
 
+pub const RESEND_API_URL: &str = "https://api.resend.com";
+
 pub struct ResendMailer {
     client: reqwest::Client,
     api_key: String,
     from: String,
+    base_url: String,
 }
 
 impl ResendMailer {
     pub fn new(api_key: String, from: String) -> Self {
+        Self::with_base_url(api_key, from, RESEND_API_URL)
+    }
+
+    /// Tests point this at a local stub so no real request is ever made.
+    pub fn with_base_url(api_key: String, from: String, base_url: &str) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .expect("reqwest client"),
             api_key,
             from,
+            base_url: base_url.trim_end_matches('/').to_string(),
         }
     }
 }
@@ -103,7 +115,7 @@ impl Mailer for ResendMailer {
     async fn send(&self, email: Email) -> Result<(), MailError> {
         let res = self
             .client
-            .post("https://api.resend.com/emails")
+            .post(format!("{}/emails", self.base_url))
             .bearer_auth(&self.api_key)
             .json(&serde_json::json!({
                 "from": self.from,
@@ -131,13 +143,19 @@ impl Mailer for LogMailer {
     }
 }
 
-/// Captures emails in memory; used by tests to read verification codes.
+/// Captures emails in memory; used by tests to read verification codes. `set_failing(true)`
+/// makes every send fail, like a provider outage.
 #[derive(Default, Clone)]
 pub struct MemoryMailer {
     pub sent: Arc<Mutex<Vec<Email>>>,
+    failing: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl MemoryMailer {
+    pub fn set_failing(&self, failing: bool) {
+        self.failing.store(failing, std::sync::atomic::Ordering::SeqCst);
+    }
+
     pub fn messages(&self) -> Vec<Email> {
         self.sent.lock().map(|v| v.clone()).unwrap_or_default()
     }
@@ -150,6 +168,9 @@ impl MemoryMailer {
 #[async_trait]
 impl Mailer for MemoryMailer {
     async fn send(&self, email: Email) -> Result<(), MailError> {
+        if self.failing.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(MailError::Smtp("simulated failure".into()));
+        }
         if let Ok(mut v) = self.sent.lock() {
             v.push(email);
         }
@@ -175,6 +196,16 @@ pub fn code_email(to: &str, first_name: &str, code: &str) -> Email {
     }
 }
 
+pub fn school_change_code_email(to: &str, first_name: &str, code: &str) -> Email {
+    Email {
+        to: to.to_string(),
+        subject: format!("Your Corner code: {code}"),
+        text: format!(
+            "Hi {first_name},\n\nEnter {code} on Corner to move your account to this school email. It expires in 15 minutes.\n\nIf you didn't ask to change schools on Corner, you can ignore this email.\n"
+        ),
+    }
+}
+
 pub fn approved_email(to: &str, first_name: &str, school: &str) -> Email {
     Email {
         to: to.to_string(),
@@ -196,5 +227,53 @@ pub fn rejected_email(to: &str, first_name: &str, reason: Option<&str>) -> Email
         text: format!(
             "Hi {first_name},\n\nWe couldn't confirm that your email domain belongs to a school, so your Corner account isn't verified.\n{reason}\nIf you have an email from your school, sign up with that address instead.\n"
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::{HeaderMap, StatusCode};
+    use axum::routing::post;
+    use axum::Router;
+
+    /// Serves a fake Resend API on localhost that answers every send with `status`.
+    async fn stub(status: StatusCode) -> String {
+        let app = Router::new().route(
+            "/emails",
+            post(move |headers: HeaderMap, body: String| async move {
+                let auth = headers.get("authorization").and_then(|v| v.to_str().ok()).unwrap_or_default();
+                if auth != "Bearer test-key" || !body.contains("\"to\":[\"a@ucla.edu\"]") {
+                    return StatusCode::BAD_REQUEST;
+                }
+                status
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, app).await.ok() });
+        format!("http://{addr}")
+    }
+
+    fn email() -> Email {
+        Email { to: "a@ucla.edu".into(), subject: "s".into(), text: "t".into() }
+    }
+
+    #[tokio::test]
+    async fn resend_success_and_error_mapping() {
+        let ok = ResendMailer::with_base_url("test-key".into(), "Corner <x@y.z>".into(), &stub(StatusCode::OK).await);
+        assert!(ok.send(email()).await.is_ok());
+
+        let rejected = ResendMailer::with_base_url("test-key".into(), "Corner <x@y.z>".into(), &stub(StatusCode::FORBIDDEN).await);
+        let err = rejected.send(email()).await.unwrap_err();
+        assert!(matches!(err, MailError::Resend(_)));
+        let app_err: crate::error::AppError = err.into();
+        assert_eq!(app_err.code, "mail_failed");
+        assert_eq!(app_err.status, StatusCode::BAD_GATEWAY);
+
+        // Unreachable provider also maps to mail_failed.
+        let down = ResendMailer::with_base_url("test-key".into(), "Corner <x@y.z>".into(), "http://127.0.0.1:9");
+        let app_err: crate::error::AppError = down.send(email()).await.unwrap_err().into();
+        assert_eq!(app_err.code, "mail_failed");
     }
 }

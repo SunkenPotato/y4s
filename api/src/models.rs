@@ -4,6 +4,11 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::enrollment;
+
+/// Authors can edit a review for this long after posting.
+pub const EDIT_WINDOW_MINUTES: i64 = 15;
+
 pub const CATEGORIES: &[&str] = &[
     "food", "coffee", "study", "gym", "services", "nightlife", "groceries", "other",
 ];
@@ -23,6 +28,7 @@ pub struct User {
     pub verified_at: Option<DateTime<Utc>>,
     pub domain_decided_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub enrolled_on: NaiveDate,
 }
 
 /// "Maya R." — first name plus last initial.
@@ -76,11 +82,22 @@ pub struct Me {
     pub status: String,
     pub school: Option<SchoolSummary>,
     pub needs_school: bool,
+    pub enrolled_on: String,
+    pub access_until: NaiveDate,
+    pub pending_school_change: Option<PendingSchoolChange>,
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct PendingSchoolChange {
+    pub email: String,
+    pub needs_school: bool,
+    pub school: Option<SchoolSummary>,
+    pub enrolled_on: String,
+}
+
 impl Me {
-    pub fn new(user: &User, school: Option<SchoolSummary>) -> Self {
+    pub fn new(user: &User, school: Option<SchoolSummary>, pending_school_change: Option<PendingSchoolChange>) -> Self {
         Self {
             id: user.id,
             email: user.email.clone(),
@@ -88,9 +105,12 @@ impl Me {
             last_name: user.last_name.clone(),
             display_name: display_name(&user.first_name, &user.last_name),
             role: user.role.clone(),
-            status: user.status.clone(),
+            status: enrollment::effective_status(user).to_string(),
             needs_school: user.school_id.is_none(),
             school,
+            enrolled_on: enrollment::format_month(user.enrolled_on),
+            access_until: enrollment::access_until(user.enrolled_on),
+            pending_school_change,
             created_at: user.created_at,
         }
     }
@@ -194,6 +214,7 @@ pub struct PlaceDetail {
     pub rating_distribution: std::collections::BTreeMap<String, i64>,
     pub school: Option<SchoolSummary>,
     pub viewer_review_id: Option<Uuid>,
+    pub viewer_saved: bool,
 }
 
 #[derive(Clone, Debug, sqlx::FromRow)]
@@ -209,6 +230,7 @@ pub struct ReviewRow {
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub deleted_by: Option<Uuid>,
+    pub edited_at: Option<DateTime<Utc>>,
     pub helpful_count: i64,
     pub viewer_voted: bool,
     pub first_name: String,
@@ -231,10 +253,13 @@ pub struct Review {
     pub author: Author,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub edited_at: Option<DateTime<Utc>>,
+    pub editable_until: Option<DateTime<Utc>>,
 }
 
 impl Review {
     pub fn from_row(row: &ReviewRow, viewer: Option<Uuid>) -> Self {
+        let is_mine = viewer == Some(row.user_id);
         Self {
             id: row.id,
             place_id: row.place_id,
@@ -244,7 +269,7 @@ impl Review {
             used_deal: row.used_deal,
             helpful_count: row.helpful_count,
             viewer_voted: row.viewer_voted,
-            is_mine: viewer == Some(row.user_id),
+            is_mine,
             author: Author::new(
                 &row.first_name,
                 &row.last_name,
@@ -253,6 +278,8 @@ impl Review {
             ),
             created_at: row.created_at,
             updated_at: row.updated_at,
+            edited_at: row.edited_at,
+            editable_until: is_mine.then(|| row.created_at + chrono::Duration::minutes(EDIT_WINDOW_MINUTES)),
         }
     }
 }

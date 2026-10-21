@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use crate::error::AppResult;
 use crate::models::{
-    first_sentence, Author, Me, Place, PlaceDetail, PlaceRow, Quote, ReviewRow, School, SchoolSummary, User,
+    first_sentence, Author, Me, PendingSchoolChange, Place, PlaceDetail, PlaceRow, Quote, ReviewRow, School,
+    SchoolSummary, User,
 };
 
 pub async fn school_summary(db: &PgPool, id: Option<Uuid>) -> AppResult<Option<SchoolSummary>> {
@@ -40,7 +41,21 @@ pub async fn user_by_id(db: &PgPool, id: Uuid) -> AppResult<User> {
 pub async fn me(db: &PgPool, user_id: Uuid) -> AppResult<Me> {
     let user = user_by_id(db, user_id).await?;
     let school = school_summary(db, user.school_id).await?;
-    Ok(Me::new(&user, school))
+    let change: Option<(String, Option<Uuid>, chrono::NaiveDate)> =
+        sqlx::query_as("SELECT email, school_id, enrolled_on FROM school_changes WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_optional(db)
+            .await?;
+    let pending = match change {
+        Some((email, change_school, enrolled_on)) => Some(PendingSchoolChange {
+            email,
+            needs_school: change_school.is_none(),
+            school: school_summary(db, change_school).await?,
+            enrolled_on: crate::enrollment::format_month(enrolled_on),
+        }),
+        None => None,
+    };
+    Ok(Me::new(&user, school, pending))
 }
 
 pub async fn author(db: &PgPool, user_id: Uuid) -> AppResult<Option<Author>> {
@@ -64,6 +79,8 @@ pub enum PlaceSort {
     New,
     /// Most reviews in the last 30 days, then rating (feed "popular").
     Popular,
+    /// Most recently saved first; requires `saved_by`.
+    Saved,
 }
 
 #[derive(Clone, Debug)]
@@ -78,6 +95,8 @@ pub struct PlaceFilter {
     pub near: Option<(f64, f64)>,
     pub radius_mi: Option<f64>,
     pub deals: bool,
+    /// Only places this user saved.
+    pub saved_by: Option<Uuid>,
     pub sort: PlaceSort,
     pub limit: i64,
     pub offset: i64,
@@ -95,6 +114,7 @@ impl Default for PlaceFilter {
             near: None,
             radius_mi: None,
             deals: false,
+            saved_by: None,
             sort: PlaceSort::Reviews,
             limit: 20,
             offset: 0,
@@ -139,6 +159,16 @@ pub async fn fetch_place_rows(db: &PgPool, f: &PlaceFilter) -> AppResult<Vec<Pla
                   p.school_id, p.student_discount, p.status, p.hours, p.created_by, p.created_at,
                   st.rating_avg, st.review_count, st.recent_count, ",
     );
+    match f.saved_by {
+        Some(uid) => {
+            qb.push("(SELECT sp.created_at FROM saved_places sp WHERE sp.place_id = p.id AND sp.user_id = ")
+                .push_bind(uid)
+                .push(") AS saved_at, ");
+        }
+        None => {
+            qb.push("NULL::timestamptz AS saved_at, ");
+        }
+    }
     match f.near {
         Some((lat, lng)) => push_haversine(&mut qb, "p.lat", "p.lng", lat, lng),
         None => {
@@ -174,6 +204,11 @@ pub async fn fetch_place_rows(db: &PgPool, f: &PlaceFilter) -> AppResult<Vec<Pla
     if f.deals {
         qb.push(" AND p.student_discount IS NOT NULL");
     }
+    if let Some(uid) = f.saved_by {
+        qb.push(" AND EXISTS (SELECT 1 FROM saved_places sp WHERE sp.place_id = p.id AND sp.user_id = ")
+            .push_bind(uid)
+            .push(")");
+    }
     if let Some((school_id, coords)) = f.school_area {
         qb.push(" AND (p.school_id = ").push_bind(school_id);
         if let Some((lat, lng)) = coords {
@@ -192,6 +227,7 @@ pub async fn fetch_place_rows(db: &PgPool, f: &PlaceFilter) -> AppResult<Vec<Pla
         PlaceSort::Rating => " ORDER BY x.rating_avg DESC NULLS LAST, x.review_count DESC, x.name, x.id",
         PlaceSort::Distance => " ORDER BY x.distance_raw ASC NULLS LAST, x.name, x.id",
         PlaceSort::New => " ORDER BY x.created_at DESC, x.id",
+        PlaceSort::Saved => " ORDER BY x.saved_at DESC, x.id",
         PlaceSort::Popular => {
             " ORDER BY x.recent_count DESC, x.rating_avg DESC NULLS LAST, x.review_count DESC, x.name, x.id"
         }
@@ -222,7 +258,7 @@ pub async fn top_quotes(db: &PgPool, place_ids: &[Uuid]) -> AppResult<HashMap<Uu
                   (SELECT count(*) FROM review_votes v WHERE v.review_id = r.id) AS helpful
            FROM reviews r
            JOIN users u ON u.id = r.user_id
-           LEFT JOIN schools s ON s.id = u.school_id
+           LEFT JOIN schools s ON s.id = r.school_id
            WHERE r.place_id = ANY($1) AND r.deleted_at IS NULL
              AND r.created_at > now() - interval '90 days'
          ) t
@@ -291,8 +327,21 @@ pub async fn place_detail(db: &PgPool, row: &PlaceRow, viewer: Option<Uuid>) -> 
         }
         None => None,
     };
+    let viewer_saved = match viewer {
+        Some(uid) => {
+            sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS (SELECT 1 FROM saved_places WHERE place_id = $1 AND user_id = $2)",
+            )
+            .bind(row.id)
+            .bind(uid)
+            .fetch_one(db)
+            .await?
+        }
+        None => false,
+    };
     Ok(PlaceDetail {
         place,
+        viewer_saved,
         hours: row.hours.clone(),
         rating_distribution,
         school: school_summary(db, row.school_id).await?,
@@ -302,15 +351,16 @@ pub async fn place_detail(db: &PgPool, row: &PlaceRow, viewer: Option<Uuid>) -> 
 
 // ---------- reviews ----------
 
-/// SELECT list for `ReviewRow`; `$1` is the viewer id (may be NULL).
+/// SELECT list for `ReviewRow`; `$1` is the viewer id (may be NULL). The author's school is the
+/// snapshot stored on the review, not their current one.
 pub const REVIEW_SELECT: &str = "SELECT r.id, r.place_id, r.user_id, r.rating, r.body, r.visited_month, r.used_deal,
-       r.created_at, r.updated_at, r.deleted_at, r.deleted_by,
+       r.created_at, r.updated_at, r.deleted_at, r.deleted_by, r.edited_at,
        (SELECT count(*) FROM review_votes v WHERE v.review_id = r.id) AS helpful_count,
        EXISTS (SELECT 1 FROM review_votes v WHERE v.review_id = r.id AND v.user_id = $1) AS viewer_voted,
        u.first_name, u.last_name, s.name AS school_name, s.kind AS school_kind
      FROM reviews r
      JOIN users u ON u.id = r.user_id
-     LEFT JOIN schools s ON s.id = u.school_id";
+     LEFT JOIN schools s ON s.id = r.school_id";
 
 /// Loads one review, including soft-deleted ones.
 pub async fn review_row(db: &PgPool, id: Uuid, viewer: Option<Uuid>) -> AppResult<Option<ReviewRow>> {

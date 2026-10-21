@@ -1,0 +1,19 @@
+.screen {
+  padding-top: var(--space-6);
+}
+
+@media (max-width: 719px) {
+  .screen {
+    padding-top: var(--space-2);
+  }
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.pair > * {
+  flex: 1 1 200px;
+}

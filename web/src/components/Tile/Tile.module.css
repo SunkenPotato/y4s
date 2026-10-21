@@ -1,0 +1,33 @@
+.tile {
+  min-width: 0;
+  padding: 20px 22px;
+  border-radius: var(--radius-tile);
+}
+
+.tight {
+  padding: var(--space-2);
+}
+
+.surface {
+  background: var(--color-surface);
+}
+
+.accent {
+  background: var(--color-accent-soft);
+}
+
+.accent .title {
+  color: var(--color-accent-ink);
+}
+
+.warn {
+  background: var(--color-warn-soft);
+  color: var(--color-warn-ink);
+}
+
+.title {
+  margin-bottom: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}

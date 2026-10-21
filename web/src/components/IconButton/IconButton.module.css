@@ -1,0 +1,46 @@
+.button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-default);
+  height: var(--control-height-default);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--color-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button:active:not(:disabled) {
+    transform: scale(var(--press-scale));
+  }
+}
+
+.secondary {
+  background: var(--color-surface);
+}
+
+.ghost {
+  background: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .secondary:hover {
+    background: var(--color-surface-pressed);
+  }
+
+  .ghost:hover {
+    background: var(--color-surface);
+  }
+}
+
+.button:disabled {
+  color: var(--color-disabled);
+  cursor: not-allowed;
+}

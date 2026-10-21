@@ -1,0 +1,129 @@
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px 22px;
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tile:has(.link:active) {
+    transform: scale(var(--press-scale));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tile:has(.link:hover) {
+    background: var(--color-surface-pressed);
+  }
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  font: var(--text-caption);
+}
+
+.meta {
+  min-width: 0;
+  color: var(--color-muted);
+}
+
+.name {
+  font: var(--text-headline);
+  letter-spacing: var(--tracking-headline);
+  overflow-wrap: anywhere;
+}
+
+/* Stretch the link over the whole tile for a big hit area. */
+.link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.link:focus-visible {
+  outline: none;
+}
+
+.tile:has(.link:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.quote {
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px var(--space-3);
+  margin-top: auto;
+  padding-top: 6px;
+  font: var(--text-caption);
+}
+
+.by {
+  color: var(--color-muted);
+}
+
+.deal {
+  color: var(--color-accent-ink);
+  font-weight: 600;
+}
+
+.promo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 180px;
+  padding: 22px;
+  border-radius: var(--radius-tile);
+  color: var(--color-bg);
+  background: var(--color-ink);
+  text-decoration: none;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.promo:hover {
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .promo:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+.promoTitle {
+  font: var(--text-headline);
+  letter-spacing: var(--tracking-headline);
+}
+
+.promoText {
+  opacity: 0.85;
+}
+
+.promoCta {
+  margin-top: var(--space-2);
+  font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .promo:hover .promoCta {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}

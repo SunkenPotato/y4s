@@ -1,0 +1,160 @@
+.container {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+  padding-bottom: 80px;
+}
+
+.narrow {
+  max-width: 560px;
+}
+
+@media (max-width: 719px) {
+  .container {
+    /* Clear the fixed TabBar. */
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.main {
+  flex: 999 1 560px;
+  min-width: 0;
+}
+
+.aside {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--grid-min), 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.head {
+  min-width: 0;
+}
+
+.display {
+  font: var(--text-display);
+  letter-spacing: var(--tracking-tight);
+  overflow-wrap: anywhere;
+}
+
+.title {
+  font: var(--text-title-1);
+  letter-spacing: var(--tracking-tight);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 720px) {
+  .title {
+    font-size: clamp(32px, 4vw, 44px);
+    line-height: 1.05;
+  }
+}
+
+.lede {
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 18px;
+}
+
+.title + .lede {
+  font-size: 16px;
+}
+
+.section {
+  min-width: 0;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.sectionTitle {
+  font: var(--text-title-2);
+  letter-spacing: var(--tracking-snug);
+}
+
+.crumbs {
+  padding-top: var(--space-2);
+  font-size: 15px;
+  color: var(--color-muted);
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.crumbs li {
+  white-space: pre;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.small {
+  font: var(--text-caption);
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-default);
+  padding: 0;
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-ink);
+  background: none;
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .textLink:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .textLink:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.placeholder {
+  background: var(--color-surface);
+}

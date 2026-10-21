@@ -1,0 +1,50 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: calc(100dvh - 120px);
+  padding-top: var(--space-4);
+}
+
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: var(--control-height-default);
+}
+
+.step {
+  font: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.pair > * {
+  flex: 1 1 160px;
+}
+
+.strong {
+  color: var(--color-ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  margin-top: auto;
+  padding-bottom: var(--space-6);
+}
+
+.center {
+  text-align: center;
+}

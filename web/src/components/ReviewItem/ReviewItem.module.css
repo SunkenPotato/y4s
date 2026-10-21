@@ -1,0 +1,88 @@
+.item {
+  display: flex;
+  gap: var(--space-4);
+  scroll-margin-top: var(--space-6);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.name {
+  font: var(--text-body);
+  font-weight: 700;
+}
+
+.date {
+  margin-left: auto;
+  font: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.stars {
+  display: block;
+  margin-top: 4px;
+}
+
+.body {
+  margin-top: 6px;
+  font: var(--text-body-large);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.extra {
+  margin-top: 6px;
+  font: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-small);
+  font: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.report {
+  min-height: var(--control-height-default);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-chip);
+  font: var(--text-caption);
+  color: var(--color-muted);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    color var(--duration-fast) ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .report:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .report:hover {
+    color: var(--color-ink);
+  }
+}

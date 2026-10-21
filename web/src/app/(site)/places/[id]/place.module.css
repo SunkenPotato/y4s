@@ -1,0 +1,71 @@
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-6) 56px;
+  margin-top: var(--space-3);
+}
+
+.heroMain {
+  flex: 999 1 480px;
+  min-width: 0;
+}
+
+.heroSide {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.pending {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  padding: 2px 12px;
+  border-radius: var(--radius-pill);
+  font: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-warn-ink);
+  background: var(--color-warn-soft);
+}
+
+.name {
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  margin-top: 14px;
+  font-size: 18px;
+  color: var(--color-muted);
+}
+
+.open::before {
+  content: ' · ';
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.actions {
+  margin-top: var(--space-5);
+}
+
+.body {
+  margin-top: 56px;
+}
+
+.reviews {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin-top: var(--space-4);
+}
+
+.reviews[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+.more {
+  margin-top: var(--space-6);
+}

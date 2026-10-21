@@ -1,0 +1,84 @@
+.dialog {
+  width: min(440px, calc(100% - 2 * var(--space-4)));
+  max-height: calc(100dvh - 2 * var(--space-4));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-hero);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  overflow: auto;
+}
+
+.dialog[open] {
+  animation: pop var(--duration-popover) var(--ease-out);
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--color-ink) 40%, transparent);
+  animation: fade var(--duration-popover) var(--ease-out);
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: -6px -10px -6px 0;
+}
+
+.title {
+  padding-top: 6px;
+  font: var(--text-headline);
+  letter-spacing: var(--tracking-headline);
+}
+
+.description {
+  margin-top: calc(-1 * var(--space-2));
+  color: var(--color-muted);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 719px) {
+  .dialog {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-radius: var(--radius-hero) var(--radius-hero) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .dialog[open] {
+    animation: sheet var(--duration-sheet) var(--ease-out);
+  }
+
+  @keyframes sheet {
+    from {
+      transform: translateY(100%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open] {
+    animation: fade var(--duration-popover) ease;
+  }
+}

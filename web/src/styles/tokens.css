@@ -1,0 +1,105 @@
+/*
+ * Corner design tokens. Locked from design round 3:
+ * https://claude.ai/artifact/34Xvjva3Q6MGXDEXUVjDfe
+ *
+ * Every color, size, radius and duration in web/src must come from here.
+ * Appearance follows the OS setting; there is no in-app theme toggle.
+ */
+
+:root {
+  /* Color: light */
+  --color-bg: #FFFFFF;
+  --color-surface: #F1F4F2;        /* tiles, fields, secondary buttons */
+  --color-surface-pressed: #E4E9E6;
+  --color-ink: #101512;            /* 18.5:1 on bg */
+  --color-muted: #57605A;          /* 6.5:1 on bg, 5.9:1 on surface */
+  --color-disabled: #9AA29D;       /* disabled text and empty stars only */
+  --color-edge: #E3E8E5;           /* inset outline on swatches/images only, never as a divider */
+  --color-accent: #0B6B4A;         /* primary actions, stars; 6.5:1 with white */
+  --color-accent-pressed: #095A3E;
+  --color-on-accent: #FFFFFF;
+  --color-accent-soft: #E1F0E8;    /* verified badge, featured tile, success */
+  --color-accent-ink: #0A5A3E;     /* text on accent-soft and text links, 7.0:1 */
+  --color-danger: #B42318;         /* error text and error field border, 6.6:1 */
+  --color-danger-soft: #FDECEA;
+  --color-danger-ink: #8F1B12;
+  --color-warn-soft: #FFF4D6;      /* pending states */
+  --color-warn-ink: #6B4400;
+  --color-toast-bg: var(--color-ink);
+  --color-toast-fg: var(--color-bg);
+  --color-toast-action: #7EDCB0;
+
+  /* Type: one family */
+  --font-sans: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-display: 800 clamp(36px, 5vw, 52px) / 1.02 var(--font-sans);   /* tracking -0.035em */
+  --text-title-1: 800 34px / 1.08 var(--font-sans);                      /* tracking -0.035em */
+  --text-title-2: 700 26px / 1.15 var(--font-sans);                      /* tracking -0.02em */
+  --text-headline: 700 21px / 1.2 var(--font-sans);                      /* tracking -0.015em */
+  --text-body: 400 16px / 1.5 var(--font-sans);
+  --text-body-large: 400 17px / 1.55 var(--font-sans);                   /* review bodies */
+  --text-callout: 500 15px / 1.4 var(--font-sans);
+  --text-caption: 400 14px / 1.45 var(--font-sans);
+  --tracking-tight: -0.035em;
+  --tracking-snug: -0.02em;
+  --tracking-headline: -0.015em;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --page-max: 1200px;
+  --page-gutter: clamp(16px, 4vw, 40px);
+
+  /* Radii */
+  --radius-chip: 9px;
+  --radius-control: 12px;
+  --radius-tile: 16px;
+  --radius-hero: 20px;
+  --radius-pill: 999px;
+
+  /* Sizes */
+  --control-height: 48px;
+  --control-height-default: 44px;  /* minimum touch target */
+  --control-height-small: 36px;    /* only inside rows with 44px hit area */
+
+  /* Motion: emil-design-eng values */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --duration-press: 160ms;
+  --duration-fast: 150ms;
+  --duration-popover: 200ms;
+  --duration-sheet: 300ms;
+  --press-scale: 0.97;
+
+  /* Focus */
+  --focus-ring: 3px solid var(--color-accent);
+  --focus-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0E1210;
+    --color-surface: #18201B;
+    --color-surface-pressed: #222B25;
+    --color-ink: #EBF0EC;          /* 16.4:1 */
+    --color-muted: #A1ABA4;        /* 8.0:1 */
+    --color-disabled: #5E6762;
+    --color-edge: #2A332D;
+    --color-accent: #4FC28F;       /* 8.5:1 with on-accent */
+    --color-accent-pressed: #43AD7E;
+    --color-on-accent: #06140D;
+    --color-accent-soft: #15302A;
+    --color-accent-ink: #7EDCB0;   /* 8.6:1 on soft */
+    --color-danger: #FF8A80;
+    --color-danger-soft: #3A1714;
+    --color-danger-ink: #FFB4AB;
+    --color-warn-soft: #352A10;
+    --color-warn-ink: #F5C66B;
+    --color-toast-action: #0B6B4A;
+  }
+}

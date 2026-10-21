@@ -15,7 +15,9 @@ use crate::queries::{self, PlaceFilter, PlaceSort};
 use crate::AppState;
 
 /// Two places with the same normalized name this close together are treated as duplicates.
-const DUPLICATE_RADIUS_MI: f64 = 50.0 / 1609.344;
+// Geocoders disagree by a few hundred meters on the same address, and two
+// branches of one name this close together are rare, so 400 m catches real duplicates.
+const DUPLICATE_RADIUS_MI: f64 = 400.0 / 1609.344;
 
 #[derive(Deserialize)]
 pub struct PlacesQuery {

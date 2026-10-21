@@ -1,0 +1,21 @@
+.intro {
+  padding: var(--space-6) 0 var(--space-2);
+}
+
+@media (max-width: 719px) {
+  .intro {
+    padding-top: var(--space-2);
+  }
+}
+
+.chips {
+  margin-top: var(--space-5);
+}
+
+.featured {
+  margin-top: var(--space-6);
+}
+
+.section {
+  margin-top: 56px;
+}

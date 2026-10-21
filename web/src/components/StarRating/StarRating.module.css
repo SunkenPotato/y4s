@@ -1,0 +1,46 @@
+.display {
+  color: var(--color-accent);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.group {
+  display: flex;
+  gap: 2px;
+}
+
+.star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--color-disabled);
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    color var(--duration-fast) ease;
+}
+
+.large {
+  width: 48px;
+  height: 48px;
+  font-size: 34px;
+}
+
+.filled {
+  color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .star:active {
+    transform: scale(var(--press-scale));
+  }
+}

@@ -1,0 +1,47 @@
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 14px var(--space-4);
+  border-radius: var(--radius-tile);
+}
+
+.icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 700;
+}
+
+.action {
+  flex: none;
+  align-self: center;
+}
+
+.success {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+}
+
+.warning {
+  background: var(--color-warn-soft);
+  color: var(--color-warn-ink);
+}
+
+.error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-ink);
+}
+
+/* An action button inside an alert sits on bg so it reads as a control. */
+.alert .action :where(button, a) {
+  background: var(--color-bg);
+  color: inherit;
+}

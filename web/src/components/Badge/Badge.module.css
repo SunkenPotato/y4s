@@ -1,0 +1,41 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 11px;
+  border-radius: var(--radius-pill);
+  font: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.large {
+  padding: 4px 12px;
+  font: var(--text-body);
+  font-weight: 600;
+}
+
+.verified {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+}
+
+.deal {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.neutral {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.pending {
+  background: var(--color-warn-soft);
+  color: var(--color-warn-ink);
+}
+
+.rejected {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-ink);
+}

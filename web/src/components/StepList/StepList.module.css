@@ -1,0 +1,57 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px var(--space-4);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font: var(--text-caption);
+  font-weight: 700;
+}
+
+.done {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.current {
+  background: var(--color-warn-soft);
+  color: var(--color-warn-ink);
+}
+
+.todo {
+  background: var(--color-bg);
+  color: var(--color-muted);
+}
+
+.title {
+  display: block;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.detail {
+  font: var(--text-caption);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}

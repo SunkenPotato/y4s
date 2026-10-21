@@ -1,0 +1,79 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: 10px var(--space-3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row:not(.checked):hover {
+    background: var(--color-surface-pressed);
+  }
+}
+
+.checked {
+  background: var(--color-bg);
+}
+
+.radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.text {
+  min-width: 0;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+}
+
+.detail {
+  font: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.footer {
+  padding: 0 var(--space-1);
+}
+
+.wrap {
+  min-width: 0;
+}
+
+.list[aria-invalid='true'] {
+  background: var(--color-danger-soft);
+}
+
+.error {
+  margin-top: 6px;
+  font: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-danger);
+}

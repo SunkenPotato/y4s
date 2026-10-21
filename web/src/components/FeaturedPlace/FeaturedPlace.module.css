@@ -1,0 +1,52 @@
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 28px var(--space-7);
+  padding: clamp(20px, 4vw, 44px);
+  border-radius: var(--radius-hero);
+  background: var(--color-accent-soft);
+}
+
+.figure {
+  flex: 999 1 480px;
+  min-width: 0;
+  margin: 0;
+}
+
+.quote {
+  margin: 0;
+  font-size: clamp(21px, 3vw, 34px);
+  font-weight: 600;
+  letter-spacing: var(--tracking-snug);
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  margin-top: 14px;
+  color: var(--color-accent-ink);
+  font-weight: 500;
+}
+
+.side {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.name {
+  font: var(--text-title-2);
+  letter-spacing: var(--tracking-snug);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: var(--color-muted);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: 14px;
+}

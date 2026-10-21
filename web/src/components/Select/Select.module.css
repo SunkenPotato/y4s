@@ -1,0 +1,18 @@
+.wrap {
+  position: relative;
+}
+
+.select {
+  appearance: none;
+  padding-inline: 12px 40px;
+  cursor: pointer;
+}
+
+.chevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--color-muted);
+  pointer-events: none;
+}

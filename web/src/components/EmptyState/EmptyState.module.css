@@ -1,0 +1,36 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: var(--space-7) var(--space-3);
+  text-align: center;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+}
+
+.title {
+  margin-top: 18px;
+  font: var(--text-title-2);
+  letter-spacing: var(--tracking-snug);
+  overflow-wrap: anywhere;
+}
+
+.text {
+  margin-top: var(--space-2);
+  color: var(--color-muted);
+}
+
+.action {
+  margin-top: 20px;
+}

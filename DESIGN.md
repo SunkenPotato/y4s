@@ -33,6 +33,7 @@ Reviews are the product. The feed leads with a large pull-quote from a top revie
 | Body large | 400 17px/1.55 | Review text |
 | Callout | 500 15px | Segmented controls, chips |
 | Caption | 400 14px | Meta lines, helper and error text (14px is the minimum size) |
+| Tab label | 500–600 12px | Only under `TabBar` icons, following the platform tab-bar convention |
 
 ## Components (`web/src/components/`)
 
@@ -59,6 +60,18 @@ Pages are built only from these. If a page needs something new, add it here firs
 | `Header` | Wordmark, search field, then the nav. Wraps on narrow screens. |
 | `TabBar` | Mobile only (<720px). Tabs: Explore, Deals, Review, Profile. A 1px surface edge on top, selected tab in accent. |
 | `Map` | Leaflet with OSM tiles, inside a surface tile with a 16px radius. Pins are accent squares with a 3px bg ring. |
+
+Supporting components added during the build, under the same rules:
+
+| Component | Notes |
+| --- | --- |
+| `Icon` | Shared stroke icon set |
+| `Dialog` | Native `<dialog>`; becomes a bottom sheet on phones |
+| `Checkbox`, `ChoiceList` | |
+| `Tile` | Surface container |
+| `RatingSummary` | |
+| `StepList` | |
+| `HoursList` | |
 
 ## Layout
 

@@ -1,0 +1,113 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) 28px;
+  padding: 20px 0;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-default);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wordmark:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+.wordmark:hover {
+  text-decoration: none;
+}
+
+.section {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.search {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.nav,
+.adminNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-default);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-chip);
+  white-space: nowrap;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .navLink:active,
+  .me:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+.me {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-default);
+  padding: 6px var(--space-3) 6px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .me:hover {
+    text-decoration: none;
+    background: var(--color-surface-pressed);
+  }
+}
+
+.placeholder {
+  display: inline-block;
+  width: 160px;
+  height: var(--control-height-default);
+}
+
+@media (max-width: 719px) {
+  .header {
+    padding: var(--space-4) 0 var(--space-2);
+  }
+
+  .wordmark {
+    font-size: 20px;
+  }
+
+  .search {
+    flex-basis: 100%;
+  }
+
+  .nav {
+    display: none;
+  }
+}

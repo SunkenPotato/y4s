@@ -1,0 +1,54 @@
+.screen {
+  padding-top: var(--space-6);
+}
+
+@media (max-width: 719px) {
+  .screen {
+    padding-top: var(--space-2);
+  }
+}
+
+.chips {
+  margin-top: var(--space-5);
+}
+
+.alert {
+  margin-top: var(--space-5);
+}
+
+.results {
+  margin-top: var(--space-6);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.list[aria-busy='true'] {
+  opacity: 0.6;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.more {
+  margin-top: var(--space-5);
+}
+
+.mapWrap {
+  position: sticky;
+  top: var(--space-5);
+}
+
+.empty {
+  margin-top: var(--space-5);
+}
+
+.tryInstead {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.tryInstead h2 {
+  font-weight: 600;
+}

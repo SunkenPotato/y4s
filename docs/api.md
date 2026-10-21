@@ -234,7 +234,7 @@ Errors:
 | --- | --- | --- |
 | `validation` | 422 | |
 | `geocode_failed` | 422 | The `address` field message reads "We couldn't find this address. Check the street and city." |
-| `duplicate_place` | 409 | Same normalized name within 50 m; includes `"existing_id"` |
+| `duplicate_place` | 409 | Same normalized name within 400 m; includes `"existing_id"` |
 
 ### GET /api/places/:id/reviews?sort=helpful|new|lowest&cursor=&limit=
 **200** a paginated list of `Review`. Default sort is `helpful` (helpful_count desc, then newest).

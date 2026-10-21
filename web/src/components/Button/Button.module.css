@@ -1,0 +1,129 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  font: var(--text-body);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.button:hover {
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button:active:not(:disabled, [data-loading]) {
+    transform: scale(var(--press-scale));
+  }
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  background: var(--color-surface);
+  color: var(--color-disabled);
+}
+
+.button[data-loading] {
+  cursor: progress;
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+/* Sizes */
+
+.size48 {
+  height: var(--control-height);
+  padding-inline: var(--space-5);
+}
+
+.size44 {
+  height: var(--control-height-default);
+  padding-inline: 18px;
+}
+
+.size36 {
+  height: var(--control-height-small);
+  padding-inline: 14px;
+  border-radius: var(--radius-pill);
+  font: var(--text-callout);
+  font-weight: 600;
+}
+
+/* Variants */
+
+.primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.secondary {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-accent-ink);
+  padding-inline: var(--space-4);
+}
+
+.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-ink);
+}
+
+.secondary[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover:not(:disabled) {
+    background: var(--color-accent-pressed);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: var(--color-surface-pressed);
+  }
+
+  .ghost:hover:not(:disabled) {
+    background: var(--color-surface);
+  }
+
+  .danger:hover:not(:disabled) {
+    color: var(--color-danger);
+  }
+}
+
+.primary:active:not(:disabled) {
+  background: var(--color-accent-pressed);
+}
+
+.secondary:active:not(:disabled) {
+  background: var(--color-surface-pressed);
+}
+
+.spinner {
+  flex: none;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

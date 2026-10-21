@@ -1,0 +1,41 @@
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-default);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  font: var(--text-callout);
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chip:active {
+    transform: scale(var(--press-scale));
+  }
+}
+
+.selected {
+  color: var(--color-bg);
+  background: var(--color-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover {
+    text-decoration: none;
+  }
+
+  .chip:not(.selected):hover {
+    background: var(--color-surface-pressed);
+  }
+}

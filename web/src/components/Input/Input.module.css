@@ -1,0 +1,46 @@
+/* Shared by Input, Textarea, Select and SearchField. */
+.control {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 14px;
+  font: var(--text-body);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 2px solid transparent;
+  border-radius: var(--radius-control);
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.control::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+.control:focus {
+  border-color: var(--color-accent);
+}
+
+.control[aria-invalid='true'] {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+}
+
+.control:disabled {
+  color: var(--color-disabled);
+  cursor: not-allowed;
+}
+
+/* One-time code: big, spaced digits. */
+.code {
+  height: 64px;
+  padding: 0 18px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  font-variant-numeric: tabular-nums;
+  border-radius: 14px;
+}

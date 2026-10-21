@@ -1,0 +1,53 @@
+.layout {
+  margin-top: var(--space-4);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.fieldset {
+  min-width: 0;
+}
+
+.legend {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.stars {
+  margin-top: var(--space-2);
+}
+
+.error {
+  margin-top: 6px;
+  font: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-danger);
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.half {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-end;
+}
+
+.tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-left: 20px;
+}

@@ -1,0 +1,31 @@
+.pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.large {
+  padding: 4px 12px;
+  font: var(--text-body);
+  font-weight: 600;
+}
+
+.bg {
+  background: var(--color-bg);
+}
+
+.surface {
+  background: var(--color-surface);
+}
+
+.star {
+  color: var(--color-accent);
+}

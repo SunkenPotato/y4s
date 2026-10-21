@@ -54,7 +54,8 @@ Pages are built only from these. If a page needs something new, add it here firs
 | `Toast` | Ink background. Its only action is Undo. Lasts 5s and pauses while hovered. |
 | `PlaceTile` | Surface tile: meta line plus a rating pill, a Headline name, a quote, and a footer with the reviewer and the deal. |
 | `FeaturedPlace` | Accent-soft hero holding the pull-quote. One per page. |
-| `ReviewItem` | Avatar initials, name, verified badge, date, stars, body, Helpful and Report. Items are separated by a 40px gap, never a line. |
+| `ReviewItem` | Avatar initials, name, verified badge, date, stars, body, Helpful and Report. Items are separated by a 40px gap, never a line. An edited review shows "Oct 14 · Edited" in the muted date slot. While still editable, the author's own review has a ghost "Edit" action with a countdown ("Edit · 12 min left"). |
+| Save action | A secondary button on the place page: a bookmark icon plus "Save". When saved it reads "Saved" with a filled icon in accent. Toggles optimistically with no toast. |
 | `Avatar` | Initials on surface; 30, 36 or 44px. |
 | `EmptyState` | 64px surface icon tile, a Title 2 line, one sentence and one primary action. |
 | `Header` | Wordmark, search field, then the nav. Wraps on narrow screens. |

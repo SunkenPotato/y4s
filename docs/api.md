@@ -26,6 +26,8 @@ This is the only interface between `api/` (Rust/axum) and `web/` (Next.js). Chan
   | `unauthenticated` | 401 | No valid session |
   | `forbidden` | 403 | Signed in, but the action isn't allowed |
   | `not_verified` | 403 | Signed in, but status isn't `verified` |
+| `access_expired` | 403 | Status is `expired` (5 years past `enrolled_on`). The message points to changing school |
+| `mail_failed` | 502 | The email provider rejected the send. Message: "We couldn't send the email. Try again in a minute." |
   | `not_found` | 404 | |
   | `validation` | 422 | Includes `fields` |
   | `rate_limited` | 429 | Includes a `Retry-After` header and `retry_after` seconds in the error |
@@ -47,9 +49,14 @@ This is the only interface between `api/` (Rust/axum) and `web/` (Next.js). Chan
   "last_name": "Rivera",
   "display_name": "Maya R.",          // first name + last initial, derived by the server
   "role": "user" | "admin",
-  "status": "pending_email" | "pending_school" | "verified" | "rejected" | "suspended",
+  "status": "pending_email" | "pending_school" | "verified" | "rejected" | "suspended" | "expired",
   "school": SchoolSummary | null,     // null until the domain is known or a school is chosen
   "needs_school": true | false,       // the email domain is unknown and no school has been chosen yet
+  "enrolled_on": "2024-09",           // YYYY-MM, month the student started at this school
+  "access_until": "2029-09-01",       // first day of enrolled_on + 5 years; posting stops on this date
+  "pending_school_change": {          // null unless a school change is in progress (see "Changing school")
+    "email": "maya.r@nyu.edu", "needs_school": false, "school": SchoolSummary | null, "enrolled_on": "2026-09"
+  } | null,
   "created_at": "…"
 }
 
@@ -79,7 +86,8 @@ This is the only interface between `api/` (Rust/axum) and `web/` (Next.js). Chan
 //   "hours": [ { "days": "Mon – Thu", "time": "11 am – 10 pm" } ] | null,
 //   "rating_distribution": { "1": 5, "2": 8, "3": 19, "4": 52, "5": 128 },
 //   "school": SchoolSummary | null,
-//   "viewer_review_id": "uuid" | null    // the viewer's own review of this place, if any
+//   "viewer_review_id": "uuid" | null,   // the viewer's own review of this place, if any
+//   "viewer_saved": true | false         // false when signed out
 // }
 
 // Review
@@ -93,8 +101,10 @@ This is the only interface between `api/` (Rust/axum) and `web/` (Next.js). Chan
   "helpful_count": 24,
   "viewer_voted": true | false,
   "is_mine": true | false,
-  "author": Author,
-  "created_at": "…", "updated_at": "…"
+  "author": Author,                   // school is a snapshot from when the review was posted
+  "created_at": "…", "updated_at": "…",
+  "edited_at": "…" | null,            // set when the author changed rating or body; the UI shows "Edited"
+  "editable_until": "…" | null        // created_at + 15 min, only when is_mine; null otherwise
 }
 ```
 
@@ -106,9 +116,11 @@ The flow is **signup → (choose school, if `needs_school`) → enter code → `
 
 ### POST /api/auth/signup
 ```json
-{ "email": "maya.r@g.ucla.edu", "password": "…", "first_name": "Maya", "last_name": "Rivera", "birth_year": 2005 }
+{ "email": "maya.r@g.ucla.edu", "password": "…", "first_name": "Maya", "last_name": "Rivera", "birth_year": 2005, "enrolled_on": "2024-09" }
 ```
-On success: **201** `{ "user": Me }`, the session cookie is set (status `pending_email`), and a 6-digit code is emailed immediately.
+On success: **201** `{ "user": Me }`, the session cookie is set (status `pending_email`), and a 6-digit code is emailed immediately. If the email send fails, the account is still created and the response is still 201; the failure is logged and the user can call resend, which returns `mail_failed` if it fails again.
+
+`enrolled_on` is the month the student started at this school. Access lasts 5 years from it (`access_until`). It may be at most 12 months in the future, and `access_until` must be in the future.
 
 The email domain is checked in this order:
 1. **Personal providers** (gmail.com, googlemail.com, yahoo.\*, outlook.com, hotmail.\*, live.com, icloud.com, me.com, aol.com, proton.me, protonmail.com, gmx.\*, mail.com, yandex.\*, zoho.com) → **422** `not_school_email`.
@@ -123,6 +135,7 @@ Errors:
 | `validation` | 422 | Fields: email, password (min 10 chars), first_name / last_name (1–40), birth_year |
 | `not_school_email` | 422 | Personal email provider |
 | `too_young` | 422 | Age under 13, computed from birth_year as of the current year |
+| `enrollment_too_old` | 422 | `access_until` already passed. Message: "Corner is for current students. Access lasts 5 years from when you started." |
 | `email_taken` | 409 | |
 | `rate_limited` | 429 | |
 
@@ -134,7 +147,12 @@ Errors:
 ```
 Sets `user.school` and links the email domain to that school: approved for `.edu`, pending otherwise. If another user's pending request for the same domain names a different school, the existing request wins and this user is linked to it.
 
-Returns **200** `{ "user": Me }`. Errors: `forbidden` (the school was already set), `validation`, `not_found`.
+Re-picking (the "Picked the wrong school?" link) is allowed while status is `pending_email`, `pending_school` or `rejected`:
+- If the user is the only one waiting on a pending or rejected domain request, the request moves to the new school and goes back to pending.
+- If other users are waiting on that domain, the response is **409** `school_locked`, with the message "Other students from this email domain already picked {school}. Contact us if that's wrong."
+- An approved domain's school can't be re-picked (**403** `forbidden`).
+
+Returns **200** `{ "user": Me }`. Errors: `forbidden`, `school_locked`, `validation`, `not_found`.
 
 ### POST /api/auth/verify
 ```json
@@ -147,7 +165,7 @@ Returns **200** `{ "user": Me }`. The status becomes:
 - `pending_school` if the domain is pending or `needs_school` is still true,
 - `rejected` if the domain was rejected.
 
-Verifying sets `verified_at`, which is used for yearly re-verification later. If the email is in the `ADMIN_EMAILS` env var, the role becomes `admin` on verification.
+Verifying sets `verified_at`. There is no periodic re-verification. Instead, a `verified` user whose `access_until` has passed is reported as status `expired` (computed on read): they can sign in, browse and save places, but every action that requires `verified` returns `access_expired`. If the email is in the `ADMIN_EMAILS` env var, the role becomes `admin` on verification, and admins never expire.
 
 Errors:
 
@@ -178,6 +196,39 @@ Errors:
 { "first_name": "…", "last_name": "…" }
 ```
 **200** `{ "user": Me }`.
+
+## Changing school
+
+This is for students who move schools, for example from high school to college or by transferring. It requires proving the new school email; the old one keeps working until the change completes. The account, saved places and existing reviews carry over, and existing reviews keep the school they were posted under. Available to users with status `verified` or `expired`.
+
+### POST /api/me/school-change
+```json
+{ "email": "maya.r@nyu.edu", "enrolled_on": "2026-09" }
+```
+Runs the same domain checks as signup (`not_school_email`, `email_taken`, `enrollment_too_old`). It replaces any change already in progress and emails a code to the new address.
+
+**200** `{ "user": Me }`, with `pending_school_change` set.
+
+### POST /api/me/school-change/school
+Body: `{ "school_id": "uuid" }` or `{ "new_school": { … } }`. Required only when `pending_school_change.needs_school` is true; the rules are the same as `/api/auth/school`. **200** `{ "user": Me }`.
+
+### POST /api/me/school-change/verify
+Body: `{ "code": "123456" }`. Same code rules and errors as `/api/auth/verify`. The change applies atomically: `email`, `school`, `enrolled_on` and `access_until` are replaced and `pending_school_change` is cleared. The status becomes `verified`, or `pending_school` if the new domain still needs admin approval (the admin cascade then handles it as for signup). Returns `409 school_choice_required` if a school must be picked first.
+
+**200** `{ "user": Me }`.
+
+### POST /api/me/school-change/resend
+**204**. Same cooldown as `/api/auth/resend`.
+
+### DELETE /api/me/school-change
+**204**. Cancels the change in progress.
+
+## Saved places
+
+Any signed-in user can save places, whatever their status.
+
+- **PUT /api/places/:id/save** and **DELETE /api/places/:id/save**: idempotent. **200** `{ "saved": true | false }`.
+- **GET /api/me/saved?cursor=&limit=**: a paginated list of `Place`, most recently saved first. Only `active` places are included.
 
 ## Schools
 
@@ -253,8 +304,13 @@ Errors:
 | `already_reviewed` | 409 | Includes `"review_id"` |
 | `not_verified` | 403 | |
 
-### PATCH /api/reviews/:id (author only)
-Accepts any subset of the POST fields. **200** `{ "review": Review }`.
+### GET /api/reviews/:id
+**200** `{ "review": Review }`. Deleted reviews return 404, except to their author within the restore window.
+
+### PATCH /api/reviews/:id (author only, verified)
+Accepts any subset of the POST fields and is allowed only until `editable_until`, which is 15 minutes after `created_at`. After that it returns **403** `edit_window_closed`: "Reviews can be edited for 15 minutes after posting." If `rating` or `body` changes, `edited_at` is set; changing only `visited_month` or `used_deal` doesn't mark the review as edited. Same validation as POST.
+
+**200** `{ "review": Review }`.
 
 ### DELETE /api/reviews/:id (author or admin)
 **204**. A soft delete (`deleted_at`). Within 5 minutes the author can call `POST /api/reviews/:id/restore` (**200** `{ "review": Review }`); this backs the Undo toast.

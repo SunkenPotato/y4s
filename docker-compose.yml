@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: corner
+      POSTGRES_PASSWORD: corner
+      POSTGRES_DB: corner
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corner"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  mail:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI: http://localhost:8025
+
+volumes:
+  pgdata:

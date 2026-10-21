@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.local
+
+# Rust
+/api/target
+
+# Node
+node_modules/
+/web/.next/
+/web/out/
+*.tsbuildinfo
+next-env.d.ts
